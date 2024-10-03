@@ -1,6 +1,6 @@
 # MLOps template: MLFlow + AWS SageMaker
 
-This project is a template for an MLOps platform based on MLFlow and AWS SageMaker. It contains a base MLFlow project that runs an ML pipeline when executed, from fetching the data to logging results in MLFlow. A remote MLFlow server acts as the central control platform, and the model life cycle is orchestrated through Makefile entry points.
+This project is a template for an MLOps platform that retrains, deploys and invokes ML models both locally and remotely using MLFlow and AWS SageMaker. It contains a base MLFlow project that runs the main ML pipeline when executed, from fetching the data to logging results in MLFlow. A remote MLFlow server acts as the central control platform, and the model life cycle is orchestrated through Makefile entry points.
 
 The main components are
 
