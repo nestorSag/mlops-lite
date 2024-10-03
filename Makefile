@@ -56,15 +56,19 @@ local-deployment:
 remote-deployment:
 	echo "Deploying the model"
 
-## Runs a batch inference job locally, using .csv inputs and outputs. Pass --model-name and --model-version to specify the model to deploy from the MLFlow registry.
+## Runs a batch inference job locally, using .csv inputs and outputs. Pass --model-name and --model-version to specify the model to use from the MLFlow registry.
 local-batch-inference:
 	echo "Running batch inference locally"
 
-## Runs a batch inference job remotely, using .csv inputs and outputs. Pass --model-name and --model-version to specify the model to deploy from the MLFlow registry.
+## Runs a batch inference job remotely, using .csv inputs and outputs. Pass --model-name and --model-version to specify the model to use from the MLFlow registry.
 remote-batch-inference:
 	echo "Running batch inference remotely"
 
 ## Bootstraps the MLflow server using the Terraform configuration in tf/
 mlflow-server:
+	echo "Bootstrapping MLflow server"
+
+## Destroys the MLflow server created with the Terraform configuration in tf/
+mlflow-server-rm:
 	echo "Bootstrapping MLflow server"
 

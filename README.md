@@ -1,6 +1,8 @@
 # MLOps template: MLFlow + AWS SageMaker
 
-This project is a template for an MLOps platform that retrains, deploys and invokes ML models both locally and remotely using MLFlow and AWS SageMaker. It contains a base MLFlow project that runs the main ML pipeline when executed, from fetching the data to logging results in MLFlow. A remote MLFlow server acts as the central control platform, and the model life cycle is orchestrated through Makefile entry points.
+This project is a template for an MLOps platform that retrains, deploys and invokes ML models both locally and remotely using MLFlow and AWS SageMaker. 
+
+It contains a base MLFlow project that runs the main ML pipeline when executed, from fetching the data to logging results in MLFlow. A remote MLFlow server acts as the central control platform, and the model life cycle is orchestrated through Makefile entry points.
 
 The main components are
 
@@ -15,6 +17,8 @@ help                Display this help message
 
 mlflow-server       Bootstraps the MLflow server using the Terraform configuration in tf/ 
 
+mlflow-server-rm    Destroys the MLflow server created with the Terraform configuration in tf/ 
+
 local-batch-inference Runs a batch inference job locally, using .csv inputs and outputs. Pass --model-name and --model-version to specify the model to deploy from the MLFlow registry. 
 
 local-deployment    Deploys the model to a local endpoint using MLFLow. Pass --model-name and --model-version to specify the model to deploy from the MLFlow registry. 
@@ -22,9 +26,9 @@ local-deployment    Deploys the model to a local endpoint using MLFLow. Pass --m
 local-training      Re-runs the MLFlow project job locally and creates a new version of the model in the MLFlow registry. 
 
 
-remote-batch-inference Runs a batch inference job remotely, using .csv inputs and outputs. Pass --model-name and --model-version to specify the model to deploy from the MLFlow registry. 
+remote-batch-inference Runs a batch inference job remotely, using .csv inputs and outputs. Pass --model-name and --model-version to specify the model to use from the MLFlow registry. 
 
-remote-deployment   Deploys the model to a SageMaker endpoint using MLFLow. Pass --model-name and --model-version to specify the model to deploy from the MLFlow registry. 
+remote-deployment   Deploys the model to a SageMaker endpoint using MLFLow. Pass --model-name and --model-version to specify the model to use from the MLFlow registry. 
 
 remote-training     Re-runs the containerised MLFlow project job in AWS and creates a new version of the model in the MLFlow registry. 
 ```
