@@ -72,3 +72,6 @@ mlflow-server:
 mlflow-server-rm:
 	echo "Bootstrapping MLflow server"
 
+## Starts a monitoring job on a SageMaker endpoint.
+monitoring-job:
+	echo "Launching montiroing job"

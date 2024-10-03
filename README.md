@@ -2,19 +2,17 @@
 
 This project is a template for an MLOps platform that retrains, deploys and invokes ML models both locally and remotely using MLFlow and AWS SageMaker. 
 
-It contains a base MLFlow project that runs the main ML pipeline when executed, from fetching the data to logging results in MLFlow. A remote MLFlow server acts as the central control platform, and the model life cycle is orchestrated through Makefile entry points.
+It contains a base MLFlow project that runs the main ML pipeline when executed, from fetching the data to logging results in MLFlow. A remote MLFlow server acts as the control centre, and the model life cycle is orchestrated through Makefile entry points.
 
 The main components are
 
-* **MLFlow project** (`project/`): This project contains Python code to fech and preprocess data, train the model, evaluate it and log it to MLFLow. Replace the Python file contents as needed.
+* **MLFlow project** (`project/`): This project contains Python code to fech and preprocess data, train the model, evaluate it and log it to MLFLow. Replace the Python file contents as needed, or add a new project.
 
-* **Terraform's MLFlow project** (`tf/`): If you don't yet have an MLFlow server up and running, use this project to bootstrap one using AWS infrastructure.
+* **Terraform's MLFlow server** (`tf/`): If you don't yet have an MLFlow server up and running, use this project to bootstrap one using AWS infrastructure.
 
 * `Makefile`: This file contains entry points to control the model's life cycle. Use `make` to see more details. Current options are 
 
 ```
-help                Display this help message 
-
 mlflow-server       Bootstraps the MLflow server using the Terraform configuration in tf/ 
 
 mlflow-server-rm    Destroys the MLflow server created with the Terraform configuration in tf/ 
@@ -31,6 +29,8 @@ remote-batch-inference Runs a batch inference job remotely, using .csv inputs an
 remote-deployment   Deploys the model to a SageMaker endpoint using MLFLow. Pass --model-name and --model-version to specify the model to use from the MLFlow registry. 
 
 remote-training     Re-runs the containerised MLFlow project job in AWS and creates a new version of the model in the MLFlow registry. 
+
+monitoring-job      Starts a monitoring job on a SageMaker endpoint.
 ```
 
 ## Template architecture 
@@ -51,7 +51,9 @@ If you already have an MLFlow server, set `MLFLOW_TRACKING_URI` to your server's
 
 3. Install Terraform
 
-4. Create an S3 bucket to store Terraform's state. Set `TERRAFORM_BUCKET` to `s3://my-bucket-name`
+4. Create an S3 bucket to store Terraform's state. 
+
+5. Set `TERRAFORM_BUCKET` to `s3://my-bucket-name`
 
 ## Running remote retraining, deployment or batch inference
 
@@ -59,4 +61,4 @@ You need steps 1. and 2. in the previous section.
 
 ## Launching remote retraining or deployment from GitHub Actions
 
-There are GH Actions workflow in the repository that can be manually run to do this. The advantage of this approach is that it guarantees retrained and deployed models do not have untracked changes.
+There are GH Actions workflows in the repository that can be manually run to do this. The advantage of this approach is that it guarantees retrained and deployed models do not have untracked changes.
