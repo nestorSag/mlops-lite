@@ -61,10 +61,14 @@ If you already have an MLFlow server, just set `MLFLOW_TRACKING_URI` to your ser
 
 5. Set `TERRAFORM_BUCKET` to `s3://my-bucket-name`
 
+6. run `make mlflow-server`. This might take a while.
+
 ## Running remote retraining, deployment or batch inference
 
-You need steps 1. and 2. in the previous section.
+You need steps 1. and 2. in the previous section. See `make help`, or the [diagram above](#mlops-platform-architecture).
 
 ## Launching remote retraining or deployment from GitHub Actions
 
 There are GH Actions workflows in the repository that can be manually run to do this. The advantage of this approach is that it guarantees retrained and deployed models do not have untracked changes.
+
+You will need to fork this repository and add your AWS credentials as GH secrets.
