@@ -54,14 +54,13 @@ resource "aws_alb_listener" "mlflow" {
 resource "aws_lb_listener_rule" "mlflow" {
   listener_arn = aws_alb_listener.mlflow.id
   priority     = 1
-
-  action {
-    target_group_arn = aws_lb_target_group.mlflow.id
-    type             = "forward"
-  }
   condition {
     source_ip {
       values = [var.internet_cidr]
     }
+  }
+  action {
+    target_group_arn = aws_lb_target_group.mlflow.id
+    type             = "forward"
   }
 }

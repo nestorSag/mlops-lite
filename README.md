@@ -33,9 +33,15 @@ remote-training     Re-runs the containerised MLFlow project job in AWS and crea
 monitoring-job      Starts a monitoring job on a SageMaker endpoint.
 ```
 
-## Template architecture 
+## MLops platform architecture 
 
-![Architecture diagram](./other/architecture.png "Architecture")
+![Platform architecture diagram](./other/images/architecture.png "Platform architecture")
+
+## Terraform MLFlow server architecture (optional)
+
+The main components of this repo's Terraform projects are shown below.
+
+![MLFLow server architecture diagram](./other/images/mlflow-server.png "MLFlow server architecture")
 
 ## Set up
 
@@ -43,7 +49,7 @@ This project was built with Python `3.12.6`, Terraform `1.9.6` and AWS CLI `1.22
 
 ## Setting up the MLFlow server
 
-If you already have an MLFlow server, set `MLFLOW_TRACKING_URI` to your server's address. If not, use the Terraform project to start one up in AWS. You will need to:
+If you already have an MLFlow server, just set `MLFLOW_TRACKING_URI` to your server's address. If not, use the Terraform project to start one up in AWS. You will need to:
 
 1. Install AWS CLI
 
