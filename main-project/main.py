@@ -1,5 +1,6 @@
 
 import argparse
+import sys
 
 from data import load_data
 from preproc import preproc_data
@@ -15,7 +16,7 @@ np.random.seed(42)
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--register", type=bool, default=True)
+    parser.add_argument("--register", type=str)
     parser.add_argument("--experiment_name", type=str)
     args = parser.parse_args()
     # Load data
@@ -29,7 +30,7 @@ if __name__ == "__main__":
         model = train_model(X_train, y_train)
         # Evaluate model
         evaluate_model(model, X_test, y_test)
-        if args.register:
+        if args.register.lower() == "true":
             run_id = mlflow.active_run().info.run_id
             mlflow.register_model(f"runs:/{run_id}/model", args.experiment_name)
     
