@@ -1,5 +1,8 @@
 .PHONY: help local-training remote-training deployment local-batch-inference remote-batch-inference mlflow-server
 
+project ?= main-project
+register ?= True
+
 ## Display this help message
 help:
 	@echo "$$(tput bold)Available rules:$$(tput sgr0)"
@@ -40,9 +43,17 @@ help:
 	}' \
 	| more $(shell test $(shell uname) = Darwin && echo '--no-init --raw-control-chars')
 
+# build:
+# 	echo "Argument 1: $(arg1)"
+# 	echo "Argument 2: $(arg2)"
+
 ## Re-runs the MLFlow project job locally and creates a new version of the model in the MLFlow registry.
+## Example usage: make local-training project=main-project register=True.
 local-training:
-	echo "Retraining the model locally"
+	mlflow run ./$(project) \
+		--experiment-name $(project) \
+		-P register=$(register) \
+		-P experiment_name=$(project)
 
 ## Re-runs the containerised MLFlow project job in AWS and creates a new version of the model in the MLFlow registry.
 remote-training:

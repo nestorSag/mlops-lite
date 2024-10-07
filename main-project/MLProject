@@ -1,0 +1,10 @@
+name: Template project
+
+conda_env: python_env.yaml
+
+entry_points:
+  main:
+    parameters:
+      register: {type: string, default: "True"}
+      experiment_name: {type: string}
+    command: "python main.py --register={register} --experiment_name={experiment_name}"
