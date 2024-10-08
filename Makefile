@@ -1,7 +1,13 @@
 .PHONY: help local-training remote-training deployment local-batch-inference remote-batch-inference mlflow-server
 
+DEFAULT_ENV_MANAGER=conda
+
 project ?= main-project
 register ?= True
+inference_input ?= ./other/input-examples/predict_example.csv
+inference_output ?= ./predict_output.csv
+input_type ?= csv
+model ?= main-project/latest
 
 ## Display this help message
 help:
@@ -47,7 +53,7 @@ help:
 # 	echo "Argument 1: $(arg1)"
 # 	echo "Argument 2: $(arg2)"
 
-## Re-runs the MLFlow project job locally and creates a new version of the model in the MLFlow registry.
+## Re-runs an MLFlow project locally and optionally creates a new version of the model in the MLFlow registry.
 ## Example usage: make local-training project=main-project register=True.
 local-training:
 	mlflow run ./$(project) \
@@ -55,21 +61,36 @@ local-training:
 		-P register=$(register) \
 		-P experiment_name=$(project)
 
+## Deploys the model to a local endpoint in port 5050 using MLFLow. This command is blocking.
+## Example usage: make local-deployment model=main-project.
+local-deployment:
+	mlflow models serve \
+		--env-manager=$(DEFAULT_ENV_MANAGER) \
+		-m models:/$(model) \
+		-p 5050
+
+## Runs a test request to the local endpoint and returns the result.
+local-deployment-test:
+	curl http://127.0.0.1:5050/invocations -H 'Content-Type:application/json' -d @./other/input-examples/serve_example.json
+
+## Runs a batch inference job locally, using .csv inputs and outputs.
+## Example usage: make local-batch-inference model=main-project inference_input=input/path.csv inference_output=output/path.csv.
+local-batch-inference:
+	mlflow models predict \
+		--env-manager=$(DEFAULT_ENV_MANAGER) \
+		-t $(input_type) \
+		-m models:/$(model) \
+		--input-path $(inference_input) \
+		--output-path $(inference_output)
+	echo "Inference completed. Input : $(inference_input), Output : $(inference_output)"
+
 ## Re-runs the containerised MLFlow project job in AWS and creates a new version of the model in the MLFlow registry.
 remote-training:
 	echo "Retraining the model remotely"
 
-## Deploys the model to a local endpoint using MLFLow. Pass --model-name and --model-version to specify the model to deploy from the MLFlow registry.
-local-deployment:
-	echo "Deploying the model"
-
 ## Deploys the model to a SageMaker endpoint using MLFLow. Pass --model-name and --model-version to specify the model to deploy from the MLFlow registry.
 remote-deployment:
 	echo "Deploying the model"
-
-## Runs a batch inference job locally, using .csv inputs and outputs. Pass --model-name and --model-version to specify the model to use from the MLFlow registry.
-local-batch-inference:
-	echo "Running batch inference locally"
 
 ## Runs a batch inference job remotely, using .csv inputs and outputs. Pass --model-name and --model-version to specify the model to use from the MLFlow registry.
 remote-batch-inference:

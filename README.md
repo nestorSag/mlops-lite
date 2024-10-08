@@ -45,7 +45,21 @@ The main components of this repo's Terraform projects are shown below.
 
 ## Set up
 
-This project was built with Python `3.12.6`, Terraform `1.9.6` and AWS CLI `1.22.34`
+
+### Local model operations
+
+* Python >= 3.12 with `scikit-learn`, `MLFlow` and `pandas` installed.
+
+* `make`
+
+* `conda`. The defaul virtual environment manager can be changed at the top of the Makefile.
+
+### Remote model operations
+
+* AWS CLI
+
+* Terraform
+
 
 ## Setting up the MLFlow server
 
