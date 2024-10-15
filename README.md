@@ -2,11 +2,11 @@
 
 This project is intended to provide a minimal MLOps control centre to train, track, deploy, monitor and retire ML models using MLFlow and AWS SageMaker. 
 
-## Scope
+# Scope
 
 This project should work out of the box for tabular models trained on data sets that fit into a single EC2 instance (up to several hundred GBs of RAM, depending on instance size). 
 
-## Assumptions
+# Assumptions
 
 Models should be packaged in the form of valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html). It is assumed that in the project folder, there is a `data.py` module with a function with the following signature
 
@@ -19,11 +19,13 @@ def get_data() -> t.Tuple[t.Any, t.Any]
 
 this function does not take arguments. This means it is assumed that it always fetches valid, recent training data. Any necessary data processing pipelines for this to work are out of the scope of this repository.
 
-## Usage
+# Usage
 
 This repository is intended to be forked and used as a control centre for ML operations, through pull requests and GitHub Actions jobs. A Makefile also exposes rules to manage model life cycle from a local environment.
 
-### Adding a model
+![Platform architecture diagram](./other/images/architecture.png "Platform architecture")
+
+## Adding a model
 
 When a model graduates from the experimentation stage, it can be added to the repository through a pull request, in the form of a new MLFlow Project folder. In order to validate the model by testing local training and serving, the following is expected:
 
@@ -31,13 +33,13 @@ When a model graduates from the experimentation stage, it can be added to the re
 
 2. `get_data()` should output a testing slice of the data whenever `TEST_ENV=True`. Model registration should be skipped in this case too.
 
-### Model deployment
+## Model deployment
 
 Model deployment can be triggered from the local development environment using `make` rules, or by triggering a GitHub actions job. The latter is recommended to avoid uncommited code leaking into deployed models.
 
 When a model is deployed, an [AWS SageMaker endpoint](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints.html) is created for live scoring. This can be used for batch prediction as well.
 
-### Model monitoring
+## Model monitoring
 
 Whenever a model is deployed, monitoring dashboards are created in AWS CloudWatch to keep track of the endpoint's performance and statistics. This includes
 
@@ -47,11 +49,11 @@ Whenever a model is deployed, monitoring dashboards are created in AWS CloudWatc
 
 The dashboard names are `<project-name>_stats` and `<project-name>_metrics`.
 
-### Model decomissioning or rollback
+## Model decomissioning or rollback
 
 Use `make` rules to deploy a different version of the model from MLFlow Model Registry into the SageMaker endpoint. Use the MLFlow Model Registry UI to tag models as deprecated.
 
-## Components
+# Components
 
 The main components of this repository are
 
@@ -85,7 +87,7 @@ remote-batch-inference  Runs a batch inference job remotely, using .csv inputs a
 remote-deployment       Deploys the model to a SageMaker endpoint using MLFLow. Pass --model-name and --model-version to specify  the model to deploy from the MLFlow registry. 
 ```
 
-## Requirements
+# Requirements
 
 * Python >= 3.10 with `scikit-learn`, `MLFlow` and `pandas` installed.
 
@@ -100,42 +102,14 @@ remote-deployment       Deploys the model to a SageMaker endpoint using MLFLow. 
 * Appropriate AWS permissions
 
 
-## Set up
+# Set up
 
 ![Set up workflow](./other/images/setup.png "Set up workflow")
 
-## Setting up the MLFlow server
+# Setting up an MLFlow server (optional)
 
-If you already have an MLFlow server, just set `MLFLOW_TRACKING_URI` to your server's address. If not, use the Terraform project to start one up in AWS. You will need to:
-
-1. Install AWS CLI
-
-2. Set up appropriate AWS credentials through the CLI
-
-3. Install Terraform
-
-4. Create an S3 bucket to store Terraform's state. 
-
-5. Set `TERRAFORM_BUCKET` to `s3://my-bucket-name`
-
-6. run `make mlflow-server`. This might take a while.
-
-## Running remote retraining, deployment or batch inference
-
-You need steps 1. and 2. in the previous section. See `make help`, or the [diagram below](#mlops-platform-architecture).
-
-## Launching remote retraining or deployment from GitHub Actions
-
-There are GH Actions workflows in the repository that can be manually run to do this. The advantage of this approach is that it guarantees retrained and deployed models do not have untracked changes.
-
-You will need to fork this repository and add your AWS credentials as GH secrets.
-
-## MLops platform architecture 
-
-![Platform architecture diagram](./other/images/architecture.png "Platform architecture")
-
-## Terraform MLFlow server architecture (optional)
-
-The main components of this repo's Terraform projects are shown below.
+You can go ahead and set up an MLFlow server you don't have one already, using `make mlflow-server`. It is spun up on AWS with an architecture as in the following diagram:
 
 ![MLFLow server architecture diagram](./other/images/mlflow-server.png "MLFlow server architecture")
+
+Note AWS now offers a fully managed MLFlow server, but the one provided by this project is thought for low-cost operations. Adapt the Terraform project to your use case, and use the [AWS calculator](https://calculator.aws/#/) for cost estimates.
