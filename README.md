@@ -33,9 +33,9 @@ When a model graduates from the experimentation stage, it can be added to the re
 
 ### Model deployment
 
-Model deployment can be triggered from the local develpment environment using `make` rules, or by triggering a GitHub actions job. The latter is recommended to avoid uncommited code leaking into deployed models.
+Model deployment can be triggered from the local development environment using `make` rules, or by triggering a GitHub actions job. The latter is recommended to avoid uncommited code leaking into deployed models.
 
-When a model is deployed, an [AWS SageMaker endpoint](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints.html) is created for live scoring. This can be used to batch prediction as well.
+When a model is deployed, an [AWS SageMaker endpoint](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints.html) is created for live scoring. This can be used for batch prediction as well.
 
 ### Model monitoring
 
@@ -49,11 +49,11 @@ The dashboard names are `<project-name>_stats` and `<project-name>_metrics`.
 
 ### Model decomissioning or rollback
 
-Use `make` rules to deploy a different version of the model from MLFlow Model Registry into the SageMaker endpoint.
+Use `make` rules to deploy a different version of the model from MLFlow Model Registry into the SageMaker endpoint. Use the MLFlow Model Registry UI to tag models as deprecated.
 
 ## Components
 
-The main components are
+The main components of this repository are
 
 * **Terraform components** (`terraform/`): Terraform is used to set up components such as
 
@@ -63,7 +63,7 @@ The main components are
 
     * MLFlow server (optional)
 
-* **Projects** (`test-project/`): Folders that contain valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html) that train, evaluate and register a model in the MLFLow server and can be run using MLFlow's CLI. Each folder is associated to a different ML model. This repository only contains a test project.
+* **Projects** (e.g. `test-project/`): Folders that contain valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html) which train, evaluate and register a model in the MLFLow server and can be run using MLFlow's CLI. Each folder is associated to a different ML model. This repository only contains a test project.
 
 * `Makefile`: This file contains entry points to control the model's life cycle. The entry points admit certain parameters to specify e.g. the project to run. Use `make` to see more details. Current options are 
 
