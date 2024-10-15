@@ -21,7 +21,7 @@ this function does not take arguments. This means it is assumed that it always f
 
 # Usage
 
-This repository is intended to be forked and used as a control centre for ML operations, through pull requests and GitHub Actions jobs. A Makefile also exposes rules to manage model life cycle from a local environment.
+This repository is intended to be forked and used as a control centre for ML operations, through pull requests and GitHub Actions jobs. A Makefile also exposes rules to manage model life cycle from a local environment. The following diagram offers a high level view of the platform architecture.
 
 ![Platform architecture diagram](./other/images/architecture.png "Platform architecture")
 
@@ -31,13 +31,13 @@ When a model graduates from the experimentation stage, it can be added to the re
 
 1. There is a `data.py` in the MLFlow Project with a `get_data()` function with which the model fetches training data, and outputs a tuple of objects `X, y` for the model to be fitted (see `test-project/`).
 
-2. `get_data()` should output a testing slice of the data whenever `TEST_ENV=True`. Model registration should be skipped in this case too.
+2. `get_data()` should output a testing slice of the data whenever `TEST_ENV=True`. Model registration into MLFlow Model Registry should be skipped based on this variable too.
 
 ## Model deployment
 
 Model deployment can be triggered from the local development environment using `make` rules, or by triggering a GitHub actions job. The latter is recommended to avoid uncommited code leaking into deployed models.
 
-When a model is deployed, an [AWS SageMaker endpoint](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints.html) is created for live scoring. This can be used for batch prediction as well.
+When a model is deployed, an [AWS SageMaker endpoint](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints.html) is created for live prediction. This can be used for batch prediction as well.
 
 ## Model monitoring
 
@@ -108,8 +108,8 @@ remote-deployment       Deploys the model to a SageMaker endpoint using MLFLow. 
 
 # Setting up an MLFlow server (optional)
 
-You can go ahead and set up an MLFlow server you don't have one already, using `make mlflow-server`. It is spun up on AWS with an architecture as in the following diagram:
+You can go ahead and set up an MLFlow server if you don't have one already, using `make mlflow-server`. It is spun up on AWS with an architecture as in the following diagram:
 
 ![MLFLow server architecture diagram](./other/images/mlflow-server.png "MLFlow server architecture")
 
-Note AWS now offers a fully managed MLFlow server, but the one provided by this project is thought for low-cost operations. Adapt the Terraform project to your use case, and use the [AWS calculator](https://calculator.aws/#/) for cost estimates.
+Note it uses billable services. Note also that AWS now offers a fully managed MLFlow server, but the one provided by this project is thought for low-cost operations. Adapt the Terraform project to your use case, and use the [AWS calculator](https://calculator.aws/#/) for cost estimates.
