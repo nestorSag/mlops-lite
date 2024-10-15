@@ -17,7 +17,7 @@ def get_data() -> t.Tuple[t.Any, t.Any]
 # model.fit(X, y)
 ```
 
-this function does not take arguments. This means it is assumed that it always fetches valid, recent training data. Any necessary data processing pipelines for this to work are out of the scope of this repository.
+this function does not take arguments. This means it is assumed that it always fetches valid, recent training data. Any external data processing pipelines necessary for this to work are out of the scope of this repository.
 
 # Usage
 
