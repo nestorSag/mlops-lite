@@ -1,4 +1,4 @@
-resource "aws_vpc" "main" {
+resource "aws_vpc" "mlops_vpc" {
   cidr_block           = var.cidr
   tags                 = local.tags
   enable_dns_support   = true

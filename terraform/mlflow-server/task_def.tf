@@ -1,3 +1,8 @@
+variable "ecr_repository_url" {
+  description = "The ECR repository URL for the mlflow Docker image"
+  type        = string
+}
+
 resource "aws_ecs_task_definition" "mlflow" {
   execution_role_arn = aws_iam_role.ecs_mlflow.arn
   family       = var.ecs_task_name
@@ -22,7 +27,7 @@ resource "aws_ecs_task_definition" "mlflow" {
           },
         ]
         essential = true
-        image     = "${aws_ecr_repository.mlflow_ecr.repository_url}:latest"
+        image     = var.ecr_repository_url
         logConfiguration = {
           logDriver = "awslogs"
           options = {

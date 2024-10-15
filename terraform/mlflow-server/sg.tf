@@ -14,7 +14,7 @@ resource "aws_security_group_rule" "db_ingress" {
   from_port         = 5432
   to_port           = 5432
   protocol          = "tcp"
-  cidr_blocks       = [var.your_vpn]
+  cidr_blocks       = [var.vpn_cidr]
   security_group_id = aws_security_group.allow_ingress_from_vpn.id
 }
 
@@ -86,7 +86,7 @@ resource "aws_security_group_rule" "ingress_lb_ports" {
   from_port         = 80
   to_port           = 80
   protocol          = "TCP"
-  cidr_blocks       = [var.your_vpn]
+  cidr_blocks       = [var.vpn_cidr]
   security_group_id = aws_security_group.lb_sg.id
 }
 

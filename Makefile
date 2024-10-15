@@ -2,7 +2,7 @@
 
 DEFAULT_ENV_MANAGER=conda
 
-project ?= main-project
+project ?= test-project
 register ?= True
 inference_input ?= ./other/input-examples/predict_example.csv
 inference_output ?= ./predict_output.csv

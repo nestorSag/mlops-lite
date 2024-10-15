@@ -1,5 +1,5 @@
 resource "aws_ecr_repository" "mlflow_ecr" {
-  name                 = "${var.app_name}-${var.env}-image"
+  name                 = "${var.app_name}-${var.env}-mlflow-image"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -9,4 +9,9 @@ resource "aws_ecr_repository" "mlflow_ecr" {
     encryption_type = "AES256"
   }
   tags = local.tags
+}
+
+# Output the ECR repository URL
+output "repository_url" {
+  value = aws_ecr_repository.mlflow_ecr.repository_url
 }
