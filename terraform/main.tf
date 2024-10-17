@@ -58,6 +58,56 @@ module "vpn-client" {
   aws-vpn-client-list    = ["root", "user-1"] #Do not delete "root" user!
 }
 
+module "s3_bucket" {
+  source = "terraform-aws-modules/s3-bucket/aws"
+
+  for_each = toset(
+    ["mlflow-artifact-store-${data.aws_caller_identity.current.account_id}", 
+    "sagemaker-endpoints-store-${data.aws_caller_identity.current.account_id}"
+    ]
+  )
+
+  bucket = each.key
+  acl    = "private"
+
+  control_object_ownership = true
+  object_ownership         = "ObjectWriter"
+
+  versioning = {
+    enabled = false
+  }
+
+}
+
+# module "ecr" {
+#   source = "terraform-aws-modules/ecr/aws"
+
+#   repository_name = "private-example"
+
+#   repository_read_write_access_arns = ["arn:aws:iam::012345678901:role/terraform"]
+#   repository_lifecycle_policy = jsonencode({
+#     rules = [
+#       {
+#         rulePriority = 1,
+#         description  = "Keep last 30 images",
+#         selection = {
+#           tagStatus     = "tagged",
+#           tagPrefixList = ["v"],
+#           countType     = "imageCountMoreThan",
+#           countNumber   = 30
+#         },
+#         action = {
+#           type = "expire"
+#         }
+#       }
+#     ]
+#   })
+
+#   tags = {
+#     Terraform   = "true"
+#     Environment = "dev"
+#   }
+# }
 
 # resource "random_password" "db_password" {
 #   length           = 16
@@ -112,20 +162,4 @@ module "vpn-client" {
 #   ]
 
 #   tags = local.tags
-# }
-
-# module "s3_bucket" {
-#   source = "terraform-aws-modules/s3-bucket/aws"
-
-#   acl    = "private"
-
-#   control_object_ownership = true
-#   object_ownership         = "ObjectWriter"
-
-#   versioning = {
-#     enabled = false
-#   }
-
-#   count = 2
-#   bucket = ["mlflow-artifact-store-${data.aws_caller_identity.current.account_id}", "sagemaker-endpoints-store-${data.aws_caller_identity.current.account_id}"]
 # }
