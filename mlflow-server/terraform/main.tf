@@ -109,38 +109,157 @@ module "ecr" {
   }
 }
 
-# resource "random_password" "db_password" {
-#   length           = 16
-#   special          = true
-#   override_special = "!#$%&*()-_=+[]{}<>:?"
-# }
+module "db" {
+  source = "terraform-aws-modules/rds/aws"
 
-# module "db" {
-#   source = "terraform-aws-modules/rds/aws"
+  identifier = "mlflow-data-store"
 
-#   identifier = "mlflow-data-store"
+  engine            = var.db.engine
+  engine_version    = var.db.engine_version
+  instance_class    = var.db.instance_class
+  allocated_storage = var.db.allocated_storage
+  family = var.db.family
 
-#   engine            = var.db.engine
-#   engine_version    = var.db.engine_version
-#   instance_class    = var.db.instance_class
-#   allocated_storage = var.db.allocated_storage
+  name  = var.db.name
+  username = var.db.username
+  port     = var.db.port
+  manage_master_user_password = true
 
-#   name  = var.db.name
-#   username = var.db.username
-#   password = random_password.db_password.result
-#   port     = var.db.port
+  # DB subnet group
+  create_db_subnet_group = true
+  subnet_ids             = module.vpc.database_subnets
 
-#   # DB subnet group
-#   create_db_subnet_group = true
-#   subnet_ids             = module.vpc.database_subnets
+  tags = {
+    Owner       = var.project
+    Environment = var.env_name
+  }
 
-#   tags = {
-#     Owner       = var.project
-#     Environment = var.env_name
-#   }
+}
 
-#   family = var.db.family
-# }
+output "master_user_secret_arn" {
+  value = module.db.master_user_secret_arn
+}
+
+data "aws_secretsmanager_secret_version" "master_user_password" {
+  secret_id = module.db.master_user_secret_arn
+}
+
+output "master_user_password" {
+  value = jsondecode(data.aws_secretsmanager_secret_version.master_user_password.secret_string)["password"]
+  sensitive = true
+}
+
+module "ecs" {
+  source = "terraform-aws-modules/ecs/aws"
+
+  cluster_name = "${var.project}-ecs-cluster"
+
+  # cluster_configuration = {
+  #   execute_command_configuration = {
+  #     logging = "OVERRIDE"
+  #     log_configuration = {
+  #       cloud_watch_log_group_name = "/aws/ecs/aws-ec2"
+  #     }
+  #   }
+  # }
+
+  fargate_capacity_providers = {
+    FARGATE = {
+      default_capacity_provider_strategy = {
+        weight = 100
+      }
+    }
+  }
+
+  services = {
+    mlflow-service = {
+      cpu    = 1024
+      memory = 4096
+      container_definitions = {
+        mlflow-container = {
+          image = "${var.ecr_repository_url}:latest"
+          environment = [
+            {
+              name  = "BUCKET"
+              value = "mlflow-artifact-store-${data.aws_caller_identity.current.account_id}"
+            },
+            {
+              name  = "USERNAME"
+              value = var.db.username
+            },
+            {
+              name  = "PASSWORD"
+              value = module.db.master_user_password
+            },
+            {
+              name  = "HOST"
+              value = module.db.db_instance_endpoint
+            },
+            {
+              name  = "PORT"
+              value = module.db.db_instance_port
+            },
+            {
+              name  = "DATABASE"
+              value = var.db.name
+            },
+          ]
+          essential = false
+          image     = var.ecr_repository_url
+          logConfiguration = {
+            logDriver = "awslogs"
+            options = {
+              awslogs-create-group  = "true"
+              awslogs-group         = "/ecs/${var.ecs_service_name}/${var.ecs_task_name}"
+              awslogs-region        = var.region
+              awslogs-stream-prefix = "ecs"
+            }
+          }
+          name = var.ecs_task_name
+          portMappings = [
+            {
+              appProtocol   = "http"
+              containerPort = 8080
+              hostPort      = 8080
+              name          = "${var.ecs_task_name}-8080-tcp"
+              protocol      = "tcp"
+            },
+          ]
+        }
+      }
+    }
+  }
+}
+
+
+####### Permissions
+module "iam_policy" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-policy"
+
+  name        = "mlflow-server-policy"
+  path        = "/"
+  description = "Policy for MLflow Server in ECS"
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "ec2:Describe*"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
+
+
+
+
 
 # module "security_group" {
 #   source  = "terraform-aws-modules/security-group/aws"
