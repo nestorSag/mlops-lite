@@ -79,35 +79,35 @@ module "s3_bucket" {
 
 }
 
-# module "ecr" {
-#   source = "terraform-aws-modules/ecr/aws"
+module "ecr" {
+  source = "terraform-aws-modules/ecr/aws"
 
-#   repository_name = "private-example"
+  repository_name = var.project
+  repository_image_tag_mutability = "IMMUTABLE"
+  repository_read_write_access_arns = [data.aws_caller_identity.current.arn]
+  repository_lifecycle_policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1,
+        description  = "Keep last 3 images",
+        selection = {
+          tagStatus     = "tagged",
+          tagPrefixList = ["v"],
+          countType     = "imageCountMoreThan",
+          countNumber   = 3
+        },
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
 
-#   repository_read_write_access_arns = ["arn:aws:iam::012345678901:role/terraform"]
-#   repository_lifecycle_policy = jsonencode({
-#     rules = [
-#       {
-#         rulePriority = 1,
-#         description  = "Keep last 30 images",
-#         selection = {
-#           tagStatus     = "tagged",
-#           tagPrefixList = ["v"],
-#           countType     = "imageCountMoreThan",
-#           countNumber   = 30
-#         },
-#         action = {
-#           type = "expire"
-#         }
-#       }
-#     ]
-#   })
-
-#   tags = {
-#     Terraform   = "true"
-#     Environment = "dev"
-#   }
-# }
+  tags = {
+    Terraform   = "true"
+    Environment = var.env_name
+  }
+}
 
 # resource "random_password" "db_password" {
 #   length           = 16
