@@ -27,7 +27,7 @@ This repository is intended to be forked and used as a control centre for ML ope
 
 ## Adding a new model
 
-When a model graduates from the experimentation stage, it can be added to the repository through a pull request, as a new MLFlow Project folder. In order to validate the model by testing local training and serving, the following is expected:
+When a model graduates from the experimentation stage, it can be added to the repository through a pull request, as a new MLFlow Project folder in `ml-projects`. In order to validate the model by testing local training and serving, the following is expected:
 
 1. There is a `data.py` in the MLFlow Project with a `get_data()` function with which the model fetches training data, and outputs a tuple of objects `X, y` for the model to be fitted (see `test-project/`).
 

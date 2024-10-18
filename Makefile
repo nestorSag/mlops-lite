@@ -2,12 +2,12 @@
 
 DEFAULT_ENV_MANAGER=conda
 
-model ?= test-project
+project ?= test-project
 register ?= True
 inference_input ?= ./other/input-examples/predict_example.csv
 inference_output ?= ./predict_output.csv
 input_type ?= csv
-model ?= main-project/latest
+model ?= test-project/latest
 
 ## Display this help message
 help:
@@ -54,15 +54,15 @@ help:
 # 	echo "Argument 2: $(arg2)"
 
 ## Re-runs an MLFlow project locally and optionally creates a new version of the model in the MLFlow registry.
-## Example usage: make local-training project=main-project register=True.
+## Example usage: make local-training project=test-project register=True.
 local-training:
-	mlflow run ./$(project) \
+	mlflow run ml-projects/$(project) \
 		--experiment-name $(project) \
 		-P register=$(register) \
 		-P experiment_name=$(project)
 
 ## Deploys the model to a local endpoint in port 5050 using MLFLow. This command is blocking.
-## Example usage: make local-deployment model=main-project.
+## Example usage: make local-deployment model=test-project.
 local-deployment:
 	mlflow models serve \
 		--env-manager=$(DEFAULT_ENV_MANAGER) \
@@ -74,7 +74,7 @@ local-deployment-test:
 	curl http://127.0.0.1:5050/invocations -H 'Content-Type:application/json' -d @./other/input-examples/serve_example.json
 
 ## Runs a batch inference job locally, using .csv inputs and outputs.
-## Example usage: make local-batch-inference model=main-project inference_input=input/path.csv inference_output=output/path.csv.
+## Example usage: make local-batch-inference model=test-project inference_input=input/path.csv inference_output=output/path.csv.
 local-batch-inference:
 	mlflow models predict \
 		--env-manager=$(DEFAULT_ENV_MANAGER) \
