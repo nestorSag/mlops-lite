@@ -8,7 +8,7 @@ This project should work out of the box for tabular models trained on data sets 
 
 # Assumptions
 
-Models should be packaged as of valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html). It is assumed that in the project folder, there is a `data.py` module with a function with the following signature
+Models should be packaged as valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html). It is assumed that in the project folder, there is a `data.py` module with a function with the following signature
 
 ```py
 def get_data() -> t.Tuple[t.Any, t.Any]
@@ -19,9 +19,28 @@ def get_data() -> t.Tuple[t.Any, t.Any]
 
 this function does not take arguments. This means it is assumed that it always fetches valid, recent training data. Any external data processing pipelines necessary for this to work are out of the scope of this repository.
 
+# Requirements
+
+* Python >= 3.10 with `scikit-learn`, `MLFlow` and `pandas` installed.
+
+* GNU `make`
+
+* `conda`. The defaul virtual environment manager can be changed at the top of the Makefile.
+
+* Terraform 
+
+* AWS CLI
+
+* Appropriate AWS permissions
+
+
+# Set up
+
+![Set up workflow](./other/images/setup.png "Set up workflow")
+
 # Usage
 
-This repository is intended to be forked and used as a control centre for ML operations, through pull requests and GitHub Actions jobs. A Makefile also exposes rules to manage model life cycle from a local environment. The following diagram offers a high level view of the platform's architecture.
+This repository is intended to be forked and used as a control centre for ML operations, through pull requests and GitHub Actions jobs. A Makefile also exposes rules to manage model life cycle from a local environment. The following diagram offers a high level view of the platform's architecture and how it relates to available `make` rules.
 
 ![Platform architecture diagram](./other/images/architecture.png "Platform architecture")
 
@@ -112,25 +131,6 @@ remote-batch-inference  Runs a batch inference job remotely, using .csv inputs a
                         Pass --model-name and --model-version to specify the model to use from the MLFlow registry. 
 remote-deployment       Deploys the model to a SageMaker endpoint using MLFLow. Pass --model-name and --model-version to specify  the model to deploy from the MLFlow registry. 
 ```
-
-# Requirements
-
-* Python >= 3.10 with `scikit-learn`, `MLFlow` and `pandas` installed.
-
-* GNU `make`
-
-* `conda`. The defaul virtual environment manager can be changed at the top of the Makefile.
-
-* Terraform 
-
-* AWS CLI
-
-* Appropriate AWS permissions
-
-
-# Set up
-
-![Set up workflow](./other/images/setup.png "Set up workflow")
 
 # Setting up an MLFlow server (optional)
 
