@@ -45,3 +45,8 @@ variable "project" {
     description = "Project name"
     type        = string
 }
+
+variable "STATE_S3_BUCKET" {
+    description = "S3 bucket to store Terraform state"
+    type        = string
+}
