@@ -39,21 +39,6 @@ module "vpc" {
 
 }
 
-# resource "aws_security_group" "vpc_endpoints" {
-#   #checkov:skip=CKV2_AWS_5: "Security group attached to vpc endpoints"
-#   vpc_id      = module.vpc.vpc_id
-#   name        = "vpc-endpoint"
-#   description = "Allow traffic from within vpc"
-
-#   ingress {
-#     description = "Allow HTTPS connection towards vpc endpoint"
-#     from_port   = 443
-#     to_port     = 443
-#     protocol    = "TCP"
-#     cidr_blocks = [module.vpc.vpc_cidr_block]
-#   }
-# }
-
 module "vpc_endpoints_sg" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
 
@@ -426,39 +411,3 @@ resource "aws_iam_role_policy" "ecs_execution_role_policy" {
   })
 }
 
-
-
-
-
-
-
-# security groups:
-#   server
-#     from LB, port 80
-#     to DB, S3
-
-####### Permissions
-
-
-
-
-# module "security_group" {
-#   source  = "terraform-aws-modules/security-group/aws"
-#   version = "~> 5.0"
-
-#   name        = local.name
-#   description = "Complete PostgreSQL example security group"
-#   vpc_id      = module.vpc.vpc_id
-
-#   # ingress
-#   ingress_with_cidr_blocks = [
-#     {
-#       from_port   = 5432
-#       to_port     = 5432
-#       protocol    = "tcp"
-#       description = "PostgreSQL access from within VPC"
-#       cidr_blocks = module.vpc.vpc_cidr_block
-#     },
-#   ]
-
-# }
