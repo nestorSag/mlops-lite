@@ -170,20 +170,19 @@ module "vpn-client" {
 module "db_sg" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
 
-  for_each    = toset(var.vpc.private_subnets)
   name        = "db"
   description = "Allows traffic from private subnets"
   vpc_id      = module.vpc.vpc_id
 
   # ingress_cidr_blocks      = module.vpc.private_subnets_cidr_blocks
   # ingress_rules            = ["mysql-3306-tcp"]
-  ingress_with_cidr_blocks = [
+  ingress_with_cidr_blocks = [for subnet_cidr in var.vpc.private_subnets : 
     {
       from_port   = 3306
       to_port     = 3306
       protocol    = "TCP"
-      description = "MySQL access from private subnet ${each.key}"
-      cidr_blocks = each.key
+      description = "MySQL access from private subnets"
+      cidr_blocks = [subnet_cidr]
     }
   ]
 }
@@ -207,7 +206,7 @@ module "db" {
   # DB subnet group
   create_db_subnet_group     =  true
   subnet_ids                 =  module.vpc.database_subnets
-  vpc_security_group_ids = [for sg in module.db_sg : sg.security_group_id]
+  vpc_security_group_ids = [module.db_sg.security_group_id]
 
 
 }
@@ -221,181 +220,211 @@ locals {
   db_password = jsondecode(data.aws_secretsmanager_secret_version.master_user_password.secret_string)["password"]
 }
 
-# module "alb" {
-#   source = "git::github.com/terraform-aws-modules/terraform-aws-alb?ref=5121d71"
-
-#   name    = "mlflow-server-lb"
-#   vpc_id  = module.vpc.vpc_id
-#   subnets = module.vpc.public_subnets
-#   load_balancer_type = "application"
-
-#   # Security Group
-#   security_group_ingress_rules = {
-#     http_all = {
-#       from_port   = 80
-#       to_port     = 80
-#       ip_protocol = "tcp"
-#       description = "HTTP web traffic"
-#       cidr_ipv4   = "0.0.0.0/0"
-#     }
-#   }
-#   security_group_egress_rules = {
-#     vpc_all = {
-#       ip_protocol = "-1"
-#       cidr_ipv4   = "0.0.0.0/0"
-#     }
-#   }
-
-#   access_logs = {
-#     bucket = "mlflow-server-lb-logs-${data.aws_caller_identity.current.account_id}"
-#   }
-
-#   listeners = {
-#     mlflow-server-http-forward = {
-#       port     = 80
-#       protocol = "HTTP"
-#       forward = {
-#         target_group_key = "mlflow_server"
-#       }
-#     }
-#   }
-
-#   target_groups = {
-#     mlflow_server = {
-#       backend_protocol = "HTTP"
-#       backend_port     = 5000
-#       target_type      = "ip"
-#       create_attachment = false
-#     }
-#   }
 
 
-# }
+module "alb_sg" {
+  source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
 
-# resource "aws_iam_role" "mlflow_server_role" {
-#   name = "mlflow_server_role"
+  name        = "alb"
+  description = "Allows traffic from VPN and VPC"
+  vpc_id      = module.vpc.vpc_id
 
-#   assume_role_policy = templatefile("${path.module}/policies/task_policy.json", {
-#     s3_bucket_arn  = module.s3_bucket.bucket_arn
-#   })
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "TCP"
+      description = "HTTP access from VPN"
+      cidr_blocks = module.vpn.vpn_cidr_blocks
+    },
+    {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "TCP"
+      description = "HTTP access from VPC"
+      cidr_blocks = module.vpc.vpc_cidr_block
+    }
+  ]
+}
 
-# }
+module "alb" {
+  source = "git::github.com/terraform-aws-modules/terraform-aws-alb?ref=5121d71"
 
-# resource "aws_iam_role" "ecs_service_role" {
-#   name = "ecs_service_role"
+  name    = "mlflow-server-lb"
+  vpc_id  = module.vpc.vpc_id
+  subnets = module.vpc.public_subnets
+  load_balancer_type = "application"
 
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [
-#       {
-#         Effect    = "Allow",
-#         Principal = {
-#           Service = "ecs-tasks.amazonaws.com"
-#         },
-#         Action    = "sts:AssumeRole"
-#       }
-#     ]
-#   })
-# }
+  security_groups = [module.alb_sg.security_group_id]
 
-# resource "aws_iam_role_policy" "ecs_service_role_policy" {
-#   name = "ecs_service_role_policy"
-#   role = aws_iam_role.ecs_service_role.id
-#   policy = templatefile("${path.module}/policies/ecs_service_policy.json", {
-#     aws_region = data.aws_region.current.name
-#     account_id = data.aws_caller_identity.current.account_id
-#     ecs_service_name = "mlflow-service"
-#     target_group_arn = module.alb.target_group_arns["mlflow_server"]
-#   })
-# }
+  access_logs = {
+    bucket = "mlflow-server-lb-logs-${data.aws_caller_identity.current.account_id}"
+  }
+
+  listeners = {
+    mlflow-server-http-forward = {
+      port     = 80
+      protocol = "HTTP"
+      forward = {
+        target_group_key = "mlflow_server"
+      }
+    }
+  }
+
+  target_groups = {
+    mlflow_server = {
+      backend_protocol = "HTTP"
+      backend_port     = 5000
+      target_type      = "ip"
+      create_attachment = false
+    }
+  }
+
+}
 
 
-# module "ecs" {
-#   source = "git::github.com/terraform-aws-modules/terraform-aws-ecs?ref=3b70e1e"
-#   depends_on = [null_resource.build_and_push_server_image, module.alb, module.db]
+module "ecs_task_sg" {
+  source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
 
-#   fargate_capacity_providers = {
-#     FARGATE = {
-#       default_capacity_provider_strategy = {
-#         weight = 100
-#       }
-#     }
-#   }
+  name        = "ecs_task"
+  description = "Allows traffic from LB"
+  vpc_id      = module.vpc.vpc_id
 
-#   services = {
-#     mlflow-service = {
+  ingress_with_source_security_group_id = [
+    {
+      from_port   = 5000
+      to_port     = 5000
+      protocol    = "TCP"
+      description = "MLflow server access from LB"
+      source_security_group_id = module.alb_sg.security_group_id
+    }
+  ]
+}
 
-#       create_tasks_iam_role = false
-#       tasks_iam_role_arn = aws_iam_role.mlflow_server_role.arn
 
-#       create_iam_role = false
+module "ecs" {
+  source = "git::github.com/terraform-aws-modules/terraform-aws-ecs?ref=3b70e1e"
+  depends_on = [null_resource.build_and_push_server_image, module.alb, module.db]
+
+  fargate_capacity_providers = {
+    FARGATE = {
+      default_capacity_provider_strategy = {
+        weight = 100
+      }
+    }
+  }
+
+  services = {
+    mlflow-service = {
+
+      create_tasks_iam_role = false
+      tasks_iam_role_arn = aws_iam_role.ecs_task_role.arn
+
+      create_iam_role = false
       
 
-#       cpu    = 1024
-#       memory = 4096
-#       container_definitions = {
+      cpu    = 1024
+      memory = 4096
+      container_definitions = {
 
-#         mlflow_server = {
-#           image = "${module.ecr.repository_url}:latest"
-#           environment = [
-#             {
-#               name  = "BUCKET"
-#               value = "mlflow-artifact-store-${data.aws_caller_identity.current.account_id}"
-#             },
-#             {
-#               name  = "USERNAME"
-#               value = var.db.username
-#             },
-#             {
-#               name  = "PASSWORD"
-#               value = local.db_password
-#             },
-#             {
-#               name  = "HOST"
-#               value = module.db.db_instance_endpoint
-#             }, 
-#             {
-#               name  = "PORT"
-#               value = module.db.db_instance_port
-#             },
-#             {
-#               name  = "DATABASE"
-#               value = var.db.name
-#             },
-#           ]
-#           essential = false
-#           image     = "${var.ecr_repository_url}:latest"
-#           logConfiguration = {
-#             logDriver = "awslogs"
-#             options = {
-#               awslogs-create-group  = "true"
-#               awslogs-group         = "/ecs/${var.ecs_service_name}/${var.ecs_task_name}"
-#               awslogs-region        = data.aws_region.current.name
-#               awslogs-stream-prefix = "ecs"
-#             }
-#           }
-#           name = var.ecs_task_name
-#           portMappings = [
-#             {
-#               appProtocol   = "http"
-#               containerPort = 8080
-#               hostPort      = 8080
-#               name          = "${var.ecs_task_name}-8080-tcp"
-#               protocol      = "tcp"
-#             },
-#           ]
-#         }
-#       }
-#       load_balancer = {
-#         service = {
-#           target_group_arn = module.alb.target_group_arns["mlflow_server"]
-#           container_name   = "mlflow_server"
-#           container_port   = 5000
-#         }
-#       }
-#     }
-#   }
-# }
+        mlflow_server = {
+          image = "${module.ecr.repository_url}:latest"
+          environment = [
+            {
+              name  = "BUCKET"
+              value = "mlflow-artifact-store-${data.aws_caller_identity.current.account_id}"
+            },
+            {
+              name  = "USERNAME"
+              value = var.db.username
+            },
+            {
+              name  = "PASSWORD"
+              value = local.db_password
+            },
+            {
+              name  = "HOST"
+              value = module.db.db_instance_endpoint
+            }, 
+            {
+              name  = "PORT"
+              value = module.db.db_instance_port
+            },
+            {
+              name  = "DATABASE"
+              value = var.db.name
+            },
+          ]
+          essential = false
+          image     = "${var.ecr_repository_url}:latest"
+          logConfiguration = {
+            logDriver = "awslogs"
+            options = {
+              awslogs-create-group  = "true"
+              awslogs-group         = "/ecs/${var.ecs_service_name}/${var.ecs_task_name}"
+              awslogs-region        = data.aws_region.current.name
+              awslogs-stream-prefix = "ecs"
+            }
+          }
+          name = var.ecs_task_name
+          portMappings = [
+            {
+              appProtocol   = "http"
+              containerPort = 8080
+              hostPort      = 8080
+              name          = "${var.ecs_task_name}-8080-tcp"
+              protocol      = "tcp"
+            },
+          ]
+        }
+      }
+      load_balancer = {
+        service = {
+          target_group_arn = module.alb.target_group_arns["mlflow_server"]
+          container_name   = "mlflow_server"
+          container_port   = 5000
+        }
+      }
+    }
+  }
+}
+
+resource "aws_iam_role" "ecs_task_role" {
+  name = "ecs_task_role"
+
+  policy = templatefile("${path.module}/policies/ecs_task_policy.json", {
+    s3_bucket_arn  = module.s3_bucket.bucket_arn
+  })
+
+}
+
+resource "aws_iam_role" "ecs_execution_role" {
+  name = "ecs_execution_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect    = "Allow",
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        },
+        Action    = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_execution_role_policy" {
+  name = "ecs_execution_role_policy"
+  role = aws_iam_role.ecs_execution_role.id
+  policy = templatefile("${path.module}/policies/ecs_execution_policy.json", {
+    aws_region = data.aws_region.current.name
+    account_id = data.aws_caller_identity.current.account_id
+    ecs_service_name = "mlflow-service"
+    target_group_arn = module.alb.target_group_arns["mlflow_server"]
+  })
+}
 
 
 
@@ -404,9 +433,6 @@ locals {
 
 
 # security groups:
-#   ALB:
-#     from VPN, VPC, port 80
-#     to VPC, any port
 #   server
 #     from LB, port 80
 #     to DB, S3
