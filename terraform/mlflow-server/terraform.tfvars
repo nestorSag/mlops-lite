@@ -17,18 +17,14 @@ vpn = {
 }
 
 db = {
-    engine            = "postgres"
-    engine_version    = "14"
-    family            = "postgres14"
+    engine            = "mysql"
+    engine_version    = "8.0"
+    family            = "mysql8.0"
     instance_class    = "db.t3.micro"
     allocated_storage = 10
     name              = "mlflowdb"
     username          = "mlflow_db_user"
     port              = "3306"
-    # iam_database_authentication_enabled = true
-    # vpc_security_group_ids = ["sg-12345678"]
-    # maintenance_window = "Mon:00:00-Mon:03:00"
-    # backup_window      = "03:00-06:00"
 }
 
 region = "us-east-1"

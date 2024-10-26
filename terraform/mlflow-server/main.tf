@@ -39,6 +39,54 @@ module "vpc" {
 
 }
 
+# resource "aws_security_group" "vpc_endpoints" {
+#   #checkov:skip=CKV2_AWS_5: "Security group attached to vpc endpoints"
+#   vpc_id      = module.vpc.vpc_id
+#   name        = "vpc-endpoint"
+#   description = "Allow traffic from within vpc"
+
+#   ingress {
+#     description = "Allow HTTPS connection towards vpc endpoint"
+#     from_port   = 443
+#     to_port     = 443
+#     protocol    = "TCP"
+#     cidr_blocks = [module.vpc.vpc_cidr_block]
+#   }
+# }
+
+module "vpc_endpoints_sg" {
+  source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
+
+  name        = "vpc-endpoint"
+  description = "Allow traffic from within vpc"
+  vpc_id      = module.vpc.vpc_id
+
+  # ingress_cidr_blocks      = [module.vpc.vpc_cidr_block]
+  # ingress_rules            = ["https-443-tcp"]
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "TCP"
+      description = "Allow HTTPS connection towards vpc endpoint"
+      cidr_blocks = module.vpc.vpc_cidr_block
+    }
+  ]
+}
+
+resource "aws_vpc_endpoint" "vpce" {
+  for_each = local.vpc_endpoints
+
+  vpc_id            = module.vpc.vpc_id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.${each.key}"
+  vpc_endpoint_type = each.value
+
+  route_table_ids     = each.value == "Gateway" ? concat([module.vpc.default_route_table_id], module.vpc.private_route_table_ids) : []
+  private_dns_enabled = each.value == "Interface" # enable private DNS for interface endpoints
+  security_group_ids  = each.value == "Interface" ? [module.vpc_endpoints_sg.security_group_id] : []
+  subnet_ids          = each.value == "Interface" ? module.vpc.private_subnets : []
+}
+
 module "s3_bucket" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=d8ad14f"
 
@@ -119,6 +167,59 @@ module "vpn-client" {
   aws-vpn-client-list    = ["root", "github", "dev1"] #Do not delete "root" user!
 }
 
+module "db_sg" {
+  source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
+
+  for_each    = toset(var.vpc.private_subnets)
+  name        = "db"
+  description = "Allows traffic from private subnets"
+  vpc_id      = module.vpc.vpc_id
+
+  # ingress_cidr_blocks      = module.vpc.private_subnets_cidr_blocks
+  # ingress_rules            = ["mysql-3306-tcp"]
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = 3306
+      to_port     = 3306
+      protocol    = "TCP"
+      description = "MySQL access from private subnet ${each.key}"
+      cidr_blocks = each.key
+    }
+  ]
+}
+
+
+module "db" {
+  source = "git::github.com/terraform-aws-modules/terraform-aws-rds?ref=4481ddd"
+  identifier = "mlflow-data-store"
+
+  engine            = var.db.engine
+  engine_version    = var.db.engine_version
+  major_engine_version = var.db.engine_version
+  instance_class    = var.db.instance_class
+  allocated_storage = var.db.allocated_storage
+  family = var.db.family
+
+  username = var.db.username
+  port     = var.db.port
+  manage_master_user_password = true
+
+  # DB subnet group
+  create_db_subnet_group     =  true
+  subnet_ids                 =  module.vpc.database_subnets
+  vpc_security_group_ids = [for sg in module.db_sg : sg.security_group_id]
+
+
+}
+
+
+data "aws_secretsmanager_secret_version" "master_user_password" {
+  secret_id = module.db.db_instance_master_user_secret_arn
+}
+
+locals {
+  db_password = jsondecode(data.aws_secretsmanager_secret_version.master_user_password.secret_string)["password"]
+}
 
 # module "alb" {
 #   source = "git::github.com/terraform-aws-modules/terraform-aws-alb?ref=5121d71"
@@ -169,36 +270,6 @@ module "vpn-client" {
 #   }
 
 
-# }
-
-
-# module "db" {
-#   source = "git::github.com/terraform-aws-modules/terraform-aws-rds?ref=4481ddd"
-#   identifier = "mlflow-data-store"
-
-#   engine            = var.db.engine
-#   engine_version    = var.db.engine_version
-#   instance_class    = var.db.instance_class
-#   allocated_storage = var.db.allocated_storage
-#   family = var.db.family
-
-#   name  = var.db.name
-#   username = var.db.username
-#   port     = var.db.port
-#   manage_master_user_password = true
-
-#   # DB subnet group
-#   create_db_subnet_group = true
-#   subnet_ids             = module.vpc.database_subnets
-
-# }
-
-# data "aws_secretsmanager_secret_version" "master_user_password" {
-#   secret_id = module.db.master_user_secret_arn
-# }
-
-# locals {
-#   db_password = jsondecode(data.aws_secretsmanager_secret_version.master_user_password.secret_string)["password"]
 # }
 
 # resource "aws_iam_role" "mlflow_server_role" {
@@ -332,7 +403,6 @@ module "vpn-client" {
 
 
 
-# add gateway endpoint to S3
 # security groups:
 #   ALB:
 #     from VPN, VPC, port 80
@@ -340,9 +410,6 @@ module "vpn-client" {
 #   server
 #     from LB, port 80
 #     to DB, S3
-#   DB
-#     from server, any port
-#     to server, any port
 
 ####### Permissions
 

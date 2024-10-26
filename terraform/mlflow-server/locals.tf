@@ -5,4 +5,8 @@ locals {
         Project     = var.project
         Terraform   = "true"
     }
+    vpc_endpoints = {
+        s3              = "Gateway",
+        secretsmanager  = "Interface",
+    }
 }
