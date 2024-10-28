@@ -1,8 +1,7 @@
-# ecs_service_name = "mlflow-service"
-# ecs_task_name = "mlflow-task"
-# internet_cidr = "0.0.0.0/0"
-# vpn_cidr = "0.0.0.0/0"
 
+region = "us-east-1"
+env_name = "prod"
+project = "mlops-platform"
 
 vpc = {
   cidr               = "10.0.0.0/16"
@@ -32,7 +31,3 @@ mlflow_server = {
     memory = 4096
     autoscaling_max_capacity = 2
 }
-
-region = "us-east-1"
-env_name = "prod"
-project = "mlops-platform"
