@@ -87,7 +87,7 @@ local-batch-inference:
 ## Bootstraps the MLflow server using the Terraform configuration in tf/
 mlflow-server:
 	aws ssm put-parameter \
-		--name "${TF_VAR_state_bucket_name}/build-mlflow-server" \
+		--name "$${TF_VAR_state_bucket_name}/build-mlflow-server" \
 		--description "This parameter holds the state that terraform uses to decide whether an MLFlow server is built" \
 		--value "true" \
 		--type "String"
@@ -96,7 +96,7 @@ mlflow-server:
 ## Destroys the MLflow server using the Terraform configuration in tf/
 mlflow-server:
 	aws ssm put-parameter \
-		--name "${TF_VAR_state_bucket_name}/build-mlflow-server" \
+		--name "$${TF_VAR_state_bucket_name}/build-mlflow-server" \
 		--description "This parameter holds the state that terraform uses to decide whether an MLFlow server is built" \
 		--value "false" \
 		--type "String"
