@@ -3,7 +3,7 @@ region = "us-east-1"
 env_name = "prod"
 project = "mlops-platform"
 
-vpc = {
+vpc_params = {
   cidr               = "10.0.0.0/16"
   private_subnets    = ["10.0.0.0/27", "10.0.0.32/27"]
   public_subnets     = ["10.0.0.64/27", "10.0.0.96/27"]
@@ -11,11 +11,11 @@ vpc = {
   azs                = ["us-east-1a", "us-east-1b"]
 }
 
-vpn = {
+vpn_params = {
     cidr = "10.1.0.0/16"
 }
 
-db = {
+db_params = {
     engine            = "mysql"
     engine_version    = "8.0"
     family            = "mysql8.0"
@@ -26,7 +26,7 @@ db = {
     port              = "3306"
 }
 
-mlflow_server = {
+server_params = {
     cpu = 1024
     memory = 4096
     autoscaling_max_capacity = 2

@@ -1,18 +1,4 @@
-terraform {
-  required_version = ">= 1.7"
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.32"
-    }
-  }
-  backend "s3" {
-    bucket = "mlops-template-tf-state"
-    key    = "mlflow-server"
-    region = "us-east-1"
-  }
 
-}
 
 provider "aws" {
   region = var.region
@@ -25,12 +11,12 @@ module "vpc" {
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-vpc?ref=12caf80"
 
   name = "my-vpc"
-  cidr = var.vpc.cidr
+  cidr = var.vpc_params.cidr
 
   azs              = slice(data.aws_availability_zones.this.names, 0, 2)
-  private_subnets  = var.vpc.private_subnets
-  public_subnets   = var.vpc.public_subnets
-  database_subnets = var.vpc.db_subnets
+  private_subnets  = var.vpc_params.private_subnets
+  public_subnets   = var.vpc_params.public_subnets
+  database_subnets = var.vpc_params.db_subnets
 
   enable_nat_gateway = false
   enable_vpn_gateway = true
@@ -146,7 +132,7 @@ module "vpn" {
   # Network information
   vpc_id                 = module.vpc.vpc_id
   subnet_id              = module.vpc.public_subnets[0]
-  client_cidr_block      = var.vpn.cidr # It must be different from the primary VPC CIDR
+  client_cidr_block      = var.vpn_params.cidr # It must be different from the primary VPC CIDR
   # VPN config options
   split_tunnel           = "true" # or false
   vpn_inactive_period = "300" # seconds
@@ -165,7 +151,7 @@ module "db_sg" {
 
   # ingress_cidr_blocks      = module.vpc.private_subnets_cidr_blocks
   # ingress_rules            = ["mysql-3306-tcp"]
-  ingress_with_cidr_blocks = [for subnet_cidr in var.vpc.private_subnets : 
+  ingress_with_cidr_blocks = [for subnet_cidr in var.vpc_params.private_subnets : 
     {
       from_port   = 3306
       to_port     = 3306
@@ -181,15 +167,15 @@ module "db" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-rds?ref=4481ddd"
   identifier = "mlflow-data-store"
 
-  engine            = var.db.engine
-  engine_version    = var.db.engine_version
-  major_engine_version = var.db.engine_version
-  instance_class    = var.db.instance_class
-  allocated_storage = var.db.allocated_storage
-  family = var.db.family
+  engine            = var.db_params.engine
+  engine_version    = var.db_params.engine_version
+  major_engine_version = var.db_params.engine_version
+  instance_class    = var.db_params.instance_class
+  allocated_storage = var.db_params.allocated_storage
+  family = var.db_params.family
 
-  username = var.db.username
-  port     = var.db.port
+  username = var.db_params.username
+  port     = var.db_params.port
   manage_master_user_password = true
 
   # DB subnet group
@@ -224,14 +210,14 @@ module "alb_sg" {
       to_port     = 80
       protocol    = "TCP"
       description = "HTTP access from VPN"
-      cidr_blocks = var.vpn.cidr
+      cidr_blocks = var.vpn_params.cidr
     },
     {
       from_port   = 80
       to_port     = 80
       protocol    = "TCP"
       description = "HTTP access from VPC"
-      cidr_blocks = var.vpc.cidr
+      cidr_blocks = var.vpc_params.cidr
     }
   ]
 }
@@ -348,9 +334,9 @@ module "ecs_service" {
   tasks_iam_role_arn = module.ecs_task_role.iam_role_arn
   security_group_ids = [module.ecs_task_sg.security_group_id]
   
-  cpu    = var.mlflow_server.cpu
-  memory = var.mlflow_server.memory
-  autoscaling_max_capacity = var.mlflow_server.autoscaling_max_capacity
+  cpu    = var.server_params.cpu
+  memory = var.server_params.memory
+  autoscaling_max_capacity = var.server_params.autoscaling_max_capacity
 
   subnet_ids = module.vpc.private_subnets
 
@@ -368,7 +354,7 @@ module "ecs_service" {
         },
         {
           name  = "USERNAME"
-          value = var.db.username
+          value = var.db_params.username
         },
         {
           name  = "PASSWORD"
@@ -384,7 +370,7 @@ module "ecs_service" {
         },
         {
           name  = "DATABASE"
-          value = var.db.name
+          value = var.db_params.name
         },
       ]
       essential = false

@@ -84,6 +84,24 @@ local-batch-inference:
 		--output-path $(inference_output)
 	echo "Inference completed. Input : $(inference_input), Output : $(inference_output)"
 
+## Bootstraps the MLflow server using the Terraform configuration in tf/
+mlflow-server:
+	aws ssm put-parameter \
+		--name "${TF_VAR_state_bucket_name}/build-mlflow-server" \
+		--description "This parameter holds the state that terraform uses to decide whether an MLFlow server is built" \
+		--value "true" \
+		--type "String"
+	cd ./terraform && terraform init && terraform apply
+
+## Destroys the MLflow server using the Terraform configuration in tf/
+mlflow-server:
+	aws ssm put-parameter \
+		--name "${TF_VAR_state_bucket_name}/build-mlflow-server" \
+		--description "This parameter holds the state that terraform uses to decide whether an MLFlow server is built" \
+		--value "false" \
+		--type "String"
+	cd ./terraform && terraform init && terraform apply
+
 ## Re-runs the containerised MLFlow project job in AWS and creates a new version of the model in the MLFlow registry.
 remote-training:
 	echo "Retraining the model remotely"
@@ -95,15 +113,6 @@ remote-deployment:
 ## Runs a batch inference job remotely, using .csv inputs and outputs. Pass --model-name and --model-version to specify the model to use from the MLFlow registry.
 remote-batch-inference:
 	echo "Running batch inference remotely"
-
-## Bootstraps the MLflow server using the Terraform configuration in tf/
-mlflow-server:
-	echo "Bootstrapping MLflow server"
-
 ## Destroys the MLflow server created with the Terraform configuration in tf/
 mlflow-server-rm:
 	echo "Bootstrapping MLflow server"
-
-## Starts a monitoring job on a SageMaker endpoint.
-monitoring-job:
-	echo "Launching montiroing job"
