@@ -27,6 +27,12 @@ db = {
     port              = "3306"
 }
 
+mlflow_server = {
+    cpu = 1024
+    memory = 4096
+    autoscaling_max_capacity = 2
+}
+
 region = "us-east-1"
 env_name = "prod"
 project = "mlops-platform"

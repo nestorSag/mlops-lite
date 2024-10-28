@@ -348,14 +348,18 @@ module "ecs_service" {
   tasks_iam_role_arn = module.ecs_task_role.iam_role_arn
   security_group_ids = [module.ecs_task_sg.security_group_id]
   
-  cpu    = 1024
-  memory = 4096
+  cpu    = var.mlflow_server.cpu
+  memory = var.mlflow_server.memory
+  autoscaling_max_capacity = var.mlflow_server.autoscaling_max_capacity
 
   subnet_ids = module.vpc.private_subnets
 
   container_definitions = {
 
     mlflow_server = {
+      cpu    = var.server_cpu
+      memory = var.server_memory
+
       image = "${module.ecr.repository_url}:${local.dockerfile_sha}"
       environment = [
         {

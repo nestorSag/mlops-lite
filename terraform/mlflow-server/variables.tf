@@ -24,10 +24,14 @@ variable "db" {
         username          = string
         port              = string
         family            = string
-        # iam_database_authentication_enabled = bool
-        # vpc_security_group_ids = list(string)
-        # maintenance_window = string
-        # backup_window      = string
+    })
+}
+
+variable "mlflow_server" {
+    type = object({
+        cpu = number
+        memory = number
+        autoscaling_max_capacity = number
     })
 }
 
