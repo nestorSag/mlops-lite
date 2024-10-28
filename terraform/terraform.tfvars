@@ -13,6 +13,7 @@ vpc_params = {
 
 vpn_params = {
     cidr = "10.1.0.0/16"
+    clients = ["root", "github", "dev1"] #Do not delete "root" user!
 }
 
 db_params = {

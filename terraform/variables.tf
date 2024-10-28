@@ -13,6 +13,7 @@ variable "vpn_params" {
     description = "VPN configuration parameters"
     type = object({
         cidr = string
+        clients = list(string) # This list must always start with a 'root' element.
     })
 }
 

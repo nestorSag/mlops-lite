@@ -126,7 +126,7 @@ module "vpn" {
   #checkov:skip=CKV_TF_1: "Terraform AWS VPN Client module"
   source  = "babicamir/vpn-client/aws"
   version = "1.0.1"
-  organization_name      = "OrganizationName"
+  organization_name      = "default"
   project-name           = var.project
   environment            = var.env_name
   # Network information
@@ -139,7 +139,7 @@ module "vpn" {
   session_timeout_hours  = "8"
   logs_retention_in_days = "7"
   # List of users to be created
-  aws-vpn-client-list    = ["root", "github", "dev1"] #Do not delete "root" user!
+  aws-vpn-client-list    = var.vpn_params.clients
 }
 
 module "db_sg" {
