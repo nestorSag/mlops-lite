@@ -54,3 +54,7 @@ variable "project" {
     description = "Project name"
     type        = string
 }
+
+variable "state_bucket_name" {
+    description = "Name of the S3 bucket to use for storing Terraform state. This variable should be set as an environmental variable with the name 'TF_VAR_state_bucket_name'."
+}

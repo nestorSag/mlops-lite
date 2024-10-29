@@ -1,12 +1,5 @@
 
 
-provider "aws" {
-  region = var.region
-  default_tags {
-    tags = local.tags
-  }
-}
-
 module "vpc" {
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-vpc?ref=12caf80"
 
@@ -317,7 +310,6 @@ module "ecs_cluster" {
     }
   }
 
-  tags = local.tags
 }
 
 
@@ -343,8 +335,8 @@ module "ecs_service" {
   container_definitions = {
 
     mlflow_server = {
-      cpu    = var.server_cpu
-      memory = var.server_memory
+      cpu    = var.server_params.cpu
+      memory = var.server_params.memory
 
       image = "${module.ecr.repository_url}:${local.dockerfile_sha}"
       environment = [
