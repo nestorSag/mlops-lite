@@ -1,13 +1,12 @@
 FROM python:3.8.0
 
-RUN adduser --disabled-password --gecos '' mlflow
-USER mlflow
+# RUN adduser --disabled-password --gecos '' mlflow
+# USER mlflow
 
 RUN pip install \
     mlflow \
     pymysql \
-    boto3 & \
-    mkdir /mlflow/
+    boto3
 
 EXPOSE 5000
 

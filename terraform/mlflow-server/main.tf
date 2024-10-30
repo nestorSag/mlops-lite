@@ -3,7 +3,7 @@
 module "vpc" {
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-vpc?ref=12caf80"
 
-  name = "my-vpc"
+  name = "${var.project}-vpc"
   cidr = var.vpc_params.cidr
 
   azs              = slice(data.aws_availability_zones.this.names, 0, 2)
@@ -76,6 +76,8 @@ module "ecr" {
   repository_name = "mlflow-server"
   repository_image_tag_mutability = "IMMUTABLE"
   repository_read_write_access_arns = [data.aws_caller_identity.current.arn]
+  repository_force_delete = true
+
   repository_lifecycle_policy = jsonencode({
     rules = [
       {
@@ -160,6 +162,8 @@ module "db" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-rds?ref=4481ddd"
   identifier = "mlflow-data-store"
 
+  db_name = "mlflow-db"
+
   engine            = var.db_params.engine
   engine_version    = var.db_params.engine_version
   major_engine_version = var.db_params.engine_version
@@ -172,10 +176,13 @@ module "db" {
   manage_master_user_password = true
 
   # DB subnet group
+  db_subnet_group_name       = "mlflow-db-subnet-group"
   create_db_subnet_group     =  true
   subnet_ids                 =  module.vpc.database_subnets
-  vpc_security_group_ids = [module.db_sg.security_group_id]
+  vpc_security_group_ids     = [module.db_sg.security_group_id]
 
+  option_group_name = "option-group-${var.db_params.family}"
+  skip_final_snapshot = true
 
 }
 
@@ -222,7 +229,7 @@ module "alb" {
   vpc_id  = module.vpc.vpc_id
   subnets = module.vpc.public_subnets
   load_balancer_type = "application"
-
+  internal = true
   security_groups = [module.alb_sg.security_group_id]
 
   access_logs = {
