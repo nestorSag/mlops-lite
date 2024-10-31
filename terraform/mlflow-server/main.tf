@@ -218,6 +218,13 @@ module "alb_sg" {
       protocol    = "TCP"
       description = "HTTP access from VPC"
       cidr_blocks = var.vpc_params.cidr
+    },
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      description = "Allow all traffic to the VPC"
+      cidr_blocks = var.vpc.cidr
     }
   ]
 }
@@ -232,9 +239,9 @@ module "alb" {
   internal = true
   security_groups = [module.alb_sg.security_group_id]
 
-  access_logs = {
-    bucket = "mlflow-server-lb-logs-${data.aws_caller_identity.current.account_id}"
-  }
+  # access_logs = {
+  #   bucket = "mlflow-server-lb-logs-${data.aws_caller_identity.current.account_id}"
+  # }
 
   listeners = {
     mlflow-server-http-forward = {
@@ -247,61 +254,27 @@ module "alb" {
   }
 
   target_groups = {
-    mlflow_server = {
+    mlflow_server_tgt_group = {
       backend_protocol = "HTTP"
-      backend_port     = 5000
+      backend_port     = var.server_params.port
       target_type      = "ip"
+      load_balancing_cross_zone_enabled = true
+
+      health_check = {
+        enabled             = true
+        healthy_threshold   = 3
+        interval            = 30
+        matcher             = "200"
+        path                = "/health"
+        port                = var.server_params.port
+        protocol            = "HTTP"
+        timeout             = 10
+        unhealthy_threshold = 3
+      }
       create_attachment = false
     }
   }
 
-}
-
-
-module "ecs_task_sg" {
-  source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
-
-  name        = "ecs_task"
-  description = "Allows traffic from LB"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress_with_source_security_group_id = [
-    {
-      from_port   = 5000
-      to_port     = 5000
-      protocol    = "TCP"
-      description = "MLflow server access from LB"
-      source_security_group_id = module.alb_sg.security_group_id
-    }
-  ]
-}
-
-
-module "ecs_task_role" {
-  source = "git::github.com/terraform-aws-modules/terraform-aws-iam.git//modules/iam-assumable-role?ref=f0e65a7"
-
-  trusted_role_services = [
-    "ecs-tasks.amazonaws.com"
-  ]
-
-  create_role = true
-
-  role_name = "ecs-task-role"
-  role_requires_mfa = false
-
-  inline_policy_statements = [
-    {
-      sid = "AllowS3BucketAccess"
-      actions = [
-        "s3:HeadObject",
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:ListBucket"
-      ]
-      effect    = "Allow"
-      resources = [module.s3_bucket.s3_bucket_arn]
-    }
-  ]
 }
 
 
@@ -316,9 +289,12 @@ module "ecs_cluster" {
       }
     }
   }
-
 }
 
+resource "aws_service_discovery_http_namespace" "mlflow_service_discovery" {
+  name        = "mlflow-server-discovery-namespace"
+  description = "Service discovery namespace for MLFLow server"
+}
 
 module "ecs_service" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-ecs.git//modules/service?ref=3b70e1e"
@@ -327,21 +303,19 @@ module "ecs_service" {
   name = "${var.project}-mlflow-service"
   depends_on = [null_resource.build_and_push_server_image, module.alb, module.db]
 
-  create_task_exec_policy   = true
-  create_task_exec_iam_role = true   
-  create_tasks_iam_role = false
-  tasks_iam_role_arn = module.ecs_task_role.iam_role_arn
-  security_group_ids = [module.ecs_task_sg.security_group_id]
-  
   cpu    = var.server_params.cpu
   memory = var.server_params.memory
+
+  autoscaling_min_capacity = 1
   autoscaling_max_capacity = var.server_params.autoscaling_max_capacity
 
   subnet_ids = module.vpc.private_subnets
 
+  enable_execute_command = true
+
   container_definitions = {
 
-    mlflow_server = {
+    (var.server_params.name) = {
       cpu    = var.server_params.cpu
       memory = var.server_params.memory
 
@@ -372,35 +346,132 @@ module "ecs_service" {
           value = var.db_params.name
         },
       ]
-      essential = false
-      image     = "${module.ecr.repository_url}:${local.dockerfile_sha}"
-      logConfiguration = {
+      essential = true
+      log_configuration = {
         logDriver = "awslogs"
         options = {
           awslogs-create-group  = "true"
-          awslogs-group         = "/ecs/${var.project}"
+          awslogs-group         = "/ecs/${var.project}/mlflow-server"
           awslogs-region        = data.aws_region.current.name
-          awslogs-stream-prefix = "ecs"
+          awslogs-stream-prefix = "ecs-mlflow-server"
         }
       }
-      name = "mlflow_server"
-      portMappings = [
+      port_mappings = [
         {
-          appProtocol   = "http"
-          containerPort = 5000
-          hostPort      = 5000
-          name          = "http-5000-tcp"
+          containerPort = var.server_params.port
+          hostPort      = var.server_params.port
+          name          = var.server_params.name
           protocol      = "tcp"
         },
       ]
     }
   }
 
-  load_balancer = {
+  service_connect_configuration = {
+    namespace = aws_service_discovery_http_namespace.mlflow_service_discovery.arn
     service = {
-      target_group_arn = module.alb.target_groups["mlflow_server"].arn
-      container_name   = "mlflow_server"
-      container_port   = 5000
+      client_alias = {
+        port     = var.server_params.port
+        dns_name = var.server_params.name
+      }
+      port_name      = var.server_params.name
+      discovery_name = var.server_params.name
     }
   }
+
+  load_balancer = {
+    service = {
+      target_group_arn = module.alb.target_groups["mlflow_server_tgt_group"].arn
+      container_name   = var.server_params.name
+      container_port   = var.server_params.port
+    }
+  }
+
+  create_security_group = true
+  security_group_rules = {
+    alb_ingress = {
+      type                     = "ingress"
+      from_port                = var.server_params.port
+      to_port                  = var.server_params.port
+      protocol                 = "tcp"
+      description              = "Service port"
+      source_security_group_id = module.alb_sg.security_group_id
+    }
+    egress_all = {
+      type        = "egress"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  }
+
+  create_iam_role = true
+  tasks_iam_role_name        = "${var.server_params.name}-task-role"
+  tasks_iam_role_description = "Role for MLFlow server task"
+  tasks_iam_role_statements = [
+    {
+      sid = "AllowLogs",
+      effect = "Allow",
+      actions = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:CreateLogGroup"
+      ],
+      resources = ["*"]
+    },
+    {
+      sid = "AllowS3AdminAccess",
+      effect = "Allow",
+      actions = [
+        "s3:*"
+      ],
+      resources = [module.s3_bucket.bucket_arn]
+    },
+  ]
+
+
+
+  create_task_exec_policy   = true
+  create_task_exec_iam_role = true
+  task_exec_iam_role_name   = "${var.server_params.name}-task-exec-role"
+  task_exec_iam_role_description = "Role for MLFlow server task execution"
+  task_exec_iam_statements = [
+    {
+      sid = "PullContainerImage",
+      effect = "Allow",
+      actions = [
+        "ecr:GetAuthorizationToken",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+      ],
+      resources = [module.ecr.repository_arn]
+    },
+    {
+      sid = "AllowS3BucketAccess",
+      effect = "Allow",
+      actions = [
+        "s3:GetObject",
+        "s3:GetBucketLocation"
+      ],
+      resources = ["*"]
+    },
+    {
+      sid = "AllowLogs",
+      effect = "Allow",
+      actions = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:CreateLogGroup"
+      ],
+      resources = ["*"]
+    }
+  ]
+
+}
+
+output "lb_url" {
+  description = "URL of load balancer"
+  value       = "http://${module.alb.dns_name}/"
 }
