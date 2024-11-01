@@ -426,12 +426,17 @@ module "ecs_service" {
       resources = ["*"]
     },
     {
-      sid = "AllowS3AdminAccess",
+      sid = "AllowS3IO",
       effect = "Allow",
       actions = [
-        "s3:*"
+        "s3:GetObject",
+        "s3:GetBucketLocation",
+        "s3:ListBucket",
+        "s3:HeadObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
       ],
-      resources = [module.s3_bucket.s3_bucket_arn]
+      resources = [module.s3_bucket.s3_bucket_arn, "${module.s3_bucket.s3_bucket_arn}/*"]
     },
   ]
 
@@ -458,7 +463,11 @@ module "ecs_service" {
       effect = "Allow",
       actions = [
         "s3:GetObject",
-        "s3:GetBucketLocation"
+        "s3:GetBucketLocation",
+        "s3:ListBucket",
+        "s3:HeadObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
       ],
       resources = ["*"]
     },
