@@ -198,37 +198,37 @@ locals {
 
 
 
-module "alb_sg" {
-  source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
+# module "alb_sg" {
+#   source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
 
-  name        = "alb"
-  description = "Allows traffic from VPN and VPC"
-  vpc_id      = module.vpc.vpc_id
+#   name        = "alb"
+#   description = "Allows traffic from VPN and VPC"
+#   vpc_id      = module.vpc.vpc_id
 
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = var.server_params.port
-      to_port     = var.server_params.port
-      protocol    = "TCP"
-      description = "HTTP access from VPN"
-      cidr_blocks = var.vpn_params.cidr
-    },
-    {
-      from_port   = var.server_params.port
-      to_port     = var.server_params.port
-      protocol    = "TCP"
-      description = "HTTP access from VPC"
-      cidr_blocks = var.vpc_params.cidr
-    },
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      description = "Allow all traffic to the VPC"
-      cidr_blocks = var.vpc_params.cidr
-    }
-  ]
-}
+#   ingress_with_cidr_blocks = [
+#     {
+#       from_port   = var.server_params.port
+#       to_port     = var.server_params.port
+#       protocol    = "TCP"
+#       description = "HTTP access from VPN"
+#       cidr_blocks = var.vpn_params.cidr
+#     },
+#     {
+#       from_port   = var.server_params.port
+#       to_port     = var.server_params.port
+#       protocol    = "TCP"
+#       description = "HTTP access from VPC"
+#       cidr_blocks = var.vpc_params.cidr
+#     },
+#     {
+#       from_port   = 0
+#       to_port     = 0
+#       protocol    = "-1"
+#       description = "Allow all traffic to the VPC"
+#       cidr_blocks = var.vpc_params.cidr
+#     }
+#   ]
+# }
 
 module "alb" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-alb?ref=5121d71"
@@ -238,7 +238,30 @@ module "alb" {
   subnets = module.vpc.public_subnets
   load_balancer_type = "application"
   internal = true
-  security_groups = [module.alb_sg.security_group_id]
+  # security_groups = [module.alb_sg.security_group_id]
+  # Security Group
+  security_group_ingress_rules = {
+    http_vpc = {
+      from_port   = var.server_params.port
+      to_port     = var.server_params.port
+      ip_protocol = "tcp"
+      description = "HTTP web traffic"
+      cidr_ipv4   = var.vpc_params.cidr
+    }
+    http_vpn = {
+      from_port   = var.server_params.port
+      to_port     = var.server_params.port
+      ip_protocol = "tcp"
+      description = "HTTP web traffic"
+      cidr_ipv4   = var.vpn_params.cidr
+    }
+  }
+  security_group_egress_rules = {
+    vpc_all = {
+      ip_protocol = "-1"
+      cidr_ipv4   = var.vpc_params.cidr
+    }
+  }
 
   listeners = {
     mlflow-server-http-forward = {
@@ -257,17 +280,17 @@ module "alb" {
       target_type      = "ip"
       load_balancing_cross_zone_enabled = true
 
-      health_check = {
-        enabled             = true
-        healthy_threshold   = 3
-        interval            = 30
-        matcher             = "200"
-        path                = "/health"
-        port                = var.server_params.port
-        protocol            = "HTTP"
-        timeout             = 10
-        unhealthy_threshold = 3
-      }
+      # health_check = {
+      #   enabled             = true
+      #   healthy_threshold   = 3
+      #   interval            = 30
+      #   matcher             = "200"
+      #   path                = "/health"
+      #   port                = var.server_params.port
+      #   protocol            = "HTTP"
+      #   timeout             = 10
+      #   unhealthy_threshold = 3
+      # }
       create_attachment = false
     }
   }
@@ -310,6 +333,8 @@ module "ecs_service" {
     (var.server_params.name) = {
       cpu    = var.server_params.cpu
       memory = var.server_params.memory
+
+      readonly_root_filesystem = false
 
       image = "${module.ecr.repository_url}:${local.dockerfile_sha}"
       environment = [
@@ -375,7 +400,7 @@ module "ecs_service" {
       to_port                  = var.server_params.port
       protocol                 = "tcp"
       description              = "Service port"
-      source_security_group_id = module.alb_sg.security_group_id
+      source_security_group_id = module.alb.security_group_id
     }
     egress_all = {
       type        = "egress"
