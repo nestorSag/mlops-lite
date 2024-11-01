@@ -37,6 +37,7 @@ variable "server_params" {
         cpu = number
         memory = number
         autoscaling_max_capacity = number
+        port = number
     })
 }
 

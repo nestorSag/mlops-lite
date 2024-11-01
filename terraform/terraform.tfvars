@@ -31,4 +31,5 @@ server_params = {
     cpu = 1024
     memory = 4096
     autoscaling_max_capacity = 2
+    port = 5000
 }

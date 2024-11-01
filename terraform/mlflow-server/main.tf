@@ -11,54 +11,56 @@ module "vpc" {
   public_subnets   = var.vpc_params.public_subnets
   database_subnets = var.vpc_params.db_subnets
 
-  enable_nat_gateway = false
   enable_vpn_gateway = true
   map_public_ip_on_launch = false
+
+  enable_nat_gateway      = true
+  single_nat_gateway      = true
   one_nat_gateway_per_az  = false
 
   enable_dns_hostnames    = true
   enable_dns_support      = true
-  create_igw              = false
+  create_igw              = true
 
 }
 
-module "vpc_endpoints_sg" {
-  source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
+# module "vpc_endpoints_sg" {
+#   source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
 
-  name        = "vpc-endpoint"
-  description = "Allow traffic from within vpc"
-  vpc_id      = module.vpc.vpc_id
+#   name        = "vpc-endpoint"
+#   description = "Allow traffic from within vpc"
+#   vpc_id      = module.vpc.vpc_id
 
-  # ingress_cidr_blocks      = [module.vpc.vpc_cidr_block]
-  # ingress_rules            = ["https-443-tcp"]
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = 443
-      to_port     = 443
-      protocol    = "TCP"
-      description = "Allow HTTPS connection towards vpc endpoint"
-      cidr_blocks = module.vpc.vpc_cidr_block
-    }
-  ]
-}
+#   # ingress_cidr_blocks      = [module.vpc.vpc_cidr_block]
+#   # ingress_rules            = ["https-443-tcp"]
+#   ingress_with_cidr_blocks = [
+#     {
+#       from_port   = 443
+#       to_port     = 443
+#       protocol    = "TCP"
+#       description = "Allow HTTPS connection towards vpc endpoint"
+#       cidr_blocks = module.vpc.vpc_cidr_block
+#     }
+#   ]
+# }
 
-resource "aws_vpc_endpoint" "vpce" {
-  for_each = local.vpc_endpoints
+# resource "aws_vpc_endpoint" "vpce" {
+#   for_each = local.vpc_endpoints
 
-  vpc_id            = module.vpc.vpc_id
-  service_name      = "com.amazonaws.${data.aws_region.current.name}.${each.key}"
-  vpc_endpoint_type = each.value
+#   vpc_id            = module.vpc.vpc_id
+#   service_name      = "com.amazonaws.${data.aws_region.current.name}.${each.key}"
+#   vpc_endpoint_type = each.value
 
-  route_table_ids     = each.value == "Gateway" ? concat([module.vpc.default_route_table_id], module.vpc.private_route_table_ids) : []
-  private_dns_enabled = each.value == "Interface" # enable private DNS for interface endpoints
-  security_group_ids  = each.value == "Interface" ? [module.vpc_endpoints_sg.security_group_id] : []
-  subnet_ids          = each.value == "Interface" ? module.vpc.private_subnets : []
-}
+#   route_table_ids     = each.value == "Gateway" ? concat([module.vpc.default_route_table_id], module.vpc.private_route_table_ids) : []
+#   private_dns_enabled = each.value == "Interface" # enable private DNS for interface endpoints
+#   security_group_ids  = each.value == "Interface" ? [module.vpc_endpoints_sg.security_group_id] : []
+#   subnet_ids          = each.value == "Interface" ? module.vpc.private_subnets : []
+# }
 
 module "s3_bucket" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=d8ad14f"
 
-  bucket = "mlflow-artifact-store-${data.aws_caller_identity.current.account_id}"
+  bucket = "${var.project}-${var.env_name}-mlflow-artifact-store"
   acl    = "private"
 
   control_object_ownership = true
@@ -75,7 +77,6 @@ module "ecr" {
 
   repository_name = "mlflow-server"
   repository_image_tag_mutability = "IMMUTABLE"
-  repository_read_write_access_arns = [data.aws_caller_identity.current.arn]
   repository_force_delete = true
 
   repository_lifecycle_policy = jsonencode({
@@ -148,10 +149,10 @@ module "db_sg" {
   # ingress_rules            = ["mysql-3306-tcp"]
   ingress_with_cidr_blocks = [for subnet_cidr in var.vpc_params.private_subnets : 
     {
-      from_port   = 3306
-      to_port     = 3306
+      from_port   = tonumber(var.db_params.port)
+      to_port     = tonumber(var.db_params.port)
       protocol    = "TCP"
-      description = "MySQL access from private subnets"
+      description = "DB access from private subnets"
       cidr_blocks = subnet_cidr
     }
   ]
@@ -206,15 +207,15 @@ module "alb_sg" {
 
   ingress_with_cidr_blocks = [
     {
-      from_port   = 80
-      to_port     = 80
+      from_port   = var.server_params.port
+      to_port     = var.server_params.port
       protocol    = "TCP"
       description = "HTTP access from VPN"
       cidr_blocks = var.vpn_params.cidr
     },
     {
-      from_port   = 80
-      to_port     = 80
+      from_port   = var.server_params.port
+      to_port     = var.server_params.port
       protocol    = "TCP"
       description = "HTTP access from VPC"
       cidr_blocks = var.vpc_params.cidr
@@ -239,13 +240,9 @@ module "alb" {
   internal = true
   security_groups = [module.alb_sg.security_group_id]
 
-  # access_logs = {
-  #   bucket = "mlflow-server-lb-logs-${data.aws_caller_identity.current.account_id}"
-  # }
-
   listeners = {
     mlflow-server-http-forward = {
-      port     = 80
+      port     = var.server_params.port
       protocol = "HTTP"
       forward = {
         target_group_key = "mlflow_server"
@@ -291,11 +288,6 @@ module "ecs_cluster" {
   }
 }
 
-resource "aws_service_discovery_http_namespace" "mlflow_service_discovery" {
-  name        = "mlflow-server-discovery-namespace"
-  description = "Service discovery namespace for MLFLow server"
-}
-
 module "ecs_service" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-ecs.git//modules/service?ref=3b70e1e"
   
@@ -323,7 +315,7 @@ module "ecs_service" {
       environment = [
         {
           name  = "BUCKET"
-          value = "s3://mlflow-artifact-store-${data.aws_caller_identity.current.account_id}"
+          value = "${var.project}-${var.env_name}-mlflow-artifact-store"
         },
         {
           name  = "USERNAME"
@@ -345,6 +337,10 @@ module "ecs_service" {
           name  = "DATABASE"
           value = var.db_params.name
         },
+        {
+          name = "MLFLOW_PORT",
+          value = "${var.server_params.port}"
+        }
       ]
       essential = true
       log_configuration = {
@@ -353,7 +349,7 @@ module "ecs_service" {
           awslogs-create-group  = "true"
           awslogs-group         = "/ecs/${var.project}/mlflow-server"
           awslogs-region        = data.aws_region.current.name
-          awslogs-stream-prefix = "ecs-mlflow-server"
+          awslogs-stream-prefix = "container"
         }
       }
       port_mappings = [
@@ -364,18 +360,6 @@ module "ecs_service" {
           protocol      = "tcp"
         },
       ]
-    }
-  }
-
-  service_connect_configuration = {
-    namespace = aws_service_discovery_http_namespace.mlflow_service_discovery.arn
-    service = {
-      client_alias = {
-        port     = var.server_params.port
-        dns_name = var.server_params.name
-      }
-      port_name      = var.server_params.name
-      discovery_name = var.server_params.name
     }
   }
 
@@ -469,9 +453,4 @@ module "ecs_service" {
     }
   ]
 
-}
-
-output "lb_url" {
-  description = "URL of load balancer"
-  value       = "http://${module.alb.dns_name}/"
 }
