@@ -63,6 +63,7 @@ module "s3_bucket" {
   bucket = "${var.project}-${var.env_name}-mlflow-artifact-store"
   acl    = "private"
 
+  force_destroy = true
   control_object_ownership = true
   object_ownership         = "ObjectWriter"
 
@@ -238,6 +239,7 @@ module "alb" {
   subnets = module.vpc.public_subnets
   load_balancer_type = "application"
   internal = true
+  enable_deletion_protection = false
   # security_groups = [module.alb_sg.security_group_id]
   # Security Group
   security_group_ingress_rules = {
