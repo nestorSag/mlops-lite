@@ -2,6 +2,7 @@
 
 DEFAULT_ENV_MANAGER=conda
 
+# variables for local training and deployment
 project ?= test-project
 register ?= True
 inference_input ?= ./other/input-examples/predict_example.csv
@@ -9,8 +10,13 @@ inference_output ?= ./predict_output.csv
 input_type ?= csv
 model ?= test-project/latest
 
-
+# variables for MLFlow server
 build_mlflow_server ?= false
+
+# variables for training pipelines  and deployment infrastructure
+SSM_TRAINING_JOB_SET = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/training-job-set
+SSM_DEPLOYMENT_JOB_SET = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/deployment-job-set
+update_action ?= add
 
 ## Display this help message
 help:
@@ -103,24 +109,41 @@ tf-apply:
 	&& terraform apply -var-file=terraform.tfvars
 
 # this line sets a default value for the build_mlflow_server variable inside the rule's scope
-mlflow-server-create: build_mlflow_server=true
-## Creates the MLflow server using the Terraform configuration in tf/
-mlflow-server-create: mlflow-server-switch tf-apply
+mlflow-server: build_mlflow_server=true
+## Provisions the MLflow server infrastructure
+mlflow-server: mlflow-server-switch tf-apply
 
-## Destroys the MLflow server using the Terraform configuration in tf/
-mlflow-server-destroy: mlflow-server-switch tf-apply
+## Tears down the MLflow server infrastructure
+mlflow-server-rm: mlflow-server-switch tf-apply
 
-## Re-runs the containerised MLFlow project job in AWS and creates a new version of the model in the MLFlow registry.
-remote-training:
-	echo "Retraining the model remotely"
+# Checks that the project folder exists, then updates the SSM parameter set and applies the Terraform configuration
+update-ssm-set:
+	if [ -d ml-projects/$(project) ]; then \
+        python utils/update_ssm_set.py \
+		--param=$(ssm_param) \
+		--elem=$(project) \
+		--action=$(update_action); \
+    else \
+        exit 1; \
+    fi
+	make tf-apply
 
-## Deploys the model to a SageMaker endpoint using MLFLow. Pass --model-name and --model-version to specify the model to deploy from the MLFlow registry.
-remote-deployment:
-	echo "Deploying the model"
+# Sets default values for training-job rule
+training-job: ssm_param=$(SSM_TRAINING_JOB_SET) update_action=add
+## Provisions the training job pipeline infrastructure and launches it. Example use: make training-job project=test-project.
+training-job: update-ssm-set tf-apply
 
-## Runs a batch inference job remotely, using .csv inputs and outputs. Pass --model-name and --model-version to specify the model to use from the MLFlow registry.
-remote-batch-inference:
-	echo "Running batch inference remotely"
-## Destroys the MLflow server created with the Terraform configuration in tf/
-mlflow-server-rm:
-	echo "Bootstrapping MLflow server"
+# Sets default values for training-job-rm rule
+training-job-rm: ssm_param=$(SSM_TRAINING_JOB_SET) update_action=remove
+## Tears down the training job pipeline. Example use: make training-job-rm project=test-project.
+training-job-rm: update-ssm-set tf-apply
+
+# Sets default values for deployment-job rule
+deployment-job: ssm_param=$(SSM_DEPLOYMENT_JOB_SET) update_action=add
+## Provisions model deployment infrastructure. Example use: make deployment-job project=test-project.
+deployment-job: update-ssm-set tf-apply
+
+# Sets default values for deployment-job-rm rule
+deployment-job-rm: ssm_param=$(SSM_DEPLOYMENT_JOB_SET) update_action=remove
+## Tears down model deployment infrastructure. Example use: make deployment-job-rm project=test-project.
+deployment-job-rm: update-ssm-set tf-apply
