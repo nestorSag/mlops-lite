@@ -163,7 +163,7 @@ module "db" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-rds?ref=4481ddd"
   identifier = "mlflow-data-store"
 
-  db_name = "mlflow-db"
+  db_name = var.db_params.name
 
   engine            = var.db_params.engine
   engine_version    = var.db_params.engine_version
@@ -182,7 +182,7 @@ module "db" {
   subnet_ids                 =  module.vpc.database_subnets
   vpc_security_group_ids     = [module.db_sg.security_group_id]
 
-  option_group_name = "option-group-${var.db_params.family}"
+  option_group_name = "mlflow-server-option-group"
   skip_final_snapshot = true
 
 }
@@ -225,7 +225,7 @@ module "alb_sg" {
       to_port     = 0
       protocol    = "-1"
       description = "Allow all traffic to the VPC"
-      cidr_blocks = var.vpc.cidr
+      cidr_blocks = var.vpc_params.cidr
     }
   ]
 }
@@ -245,7 +245,7 @@ module "alb" {
       port     = var.server_params.port
       protocol = "HTTP"
       forward = {
-        target_group_key = "mlflow_server"
+        target_group_key = "mlflow_server_tgt_group"
       }
     }
   }
@@ -315,7 +315,7 @@ module "ecs_service" {
       environment = [
         {
           name  = "BUCKET"
-          value = "${var.project}-${var.env_name}-mlflow-artifact-store"
+          value = "s3://${var.project}-${var.env_name}-mlflow-artifact-store"
         },
         {
           name  = "USERNAME"
@@ -326,13 +326,9 @@ module "ecs_service" {
           value = local.db_password
         },
         {
-          name  = "HOST"
+          name  = "DB_ENDPOINT" # host:port
           value = module.db.db_instance_endpoint
         }, 
-        {
-          name  = "PORT"
-          value = module.db.db_instance_port
-        },
         {
           name  = "DATABASE"
           value = var.db_params.name
@@ -410,7 +406,7 @@ module "ecs_service" {
       actions = [
         "s3:*"
       ],
-      resources = [module.s3_bucket.bucket_arn]
+      resources = [module.s3_bucket.s3_bucket_arn]
     },
   ]
 

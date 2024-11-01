@@ -15,5 +15,5 @@ CMD mlflow server \
     --host 0.0.0.0 \
     --port ${MLFLOW_PORT} \
     --default-artifact-root ${BUCKET} \
-    --backend-store-uri mysql+pymysql://${USERNAME}:${PASSWORD}@${HOST}:${PORT}/${DATABASE}
+    --backend-store-uri mysql+pymysql://${USERNAME}:${PASSWORD}@${DB_ENDPOINT}/${DATABASE}
 

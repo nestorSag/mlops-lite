@@ -32,4 +32,5 @@ server_params = {
     memory = 4096
     autoscaling_max_capacity = 2
     port = 5000
+    name = "mlflow_server"
 }

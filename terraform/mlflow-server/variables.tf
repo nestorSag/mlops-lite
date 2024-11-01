@@ -38,6 +38,7 @@ variable "server_params" {
         memory = number
         autoscaling_max_capacity = number
         port = number
+        name = string
     })
 }
 
