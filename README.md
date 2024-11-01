@@ -8,7 +8,7 @@ This project should work out of the box for tabular models trained on data sets 
 
 # Assumptions
 
-Models should be packaged in the form of valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html). It is assumed that in the project folder, there is a `data.py` module with a function with the following signature
+Models should be packaged as valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html). It is assumed that in the project folder, there is a `data.py` module with a function with the following signature
 
 ```py
 def get_data() -> t.Tuple[t.Any, t.Any]
@@ -19,15 +19,34 @@ def get_data() -> t.Tuple[t.Any, t.Any]
 
 this function does not take arguments. This means it is assumed that it always fetches valid, recent training data. Any external data processing pipelines necessary for this to work are out of the scope of this repository.
 
+# Requirements
+
+* Python >= 3.10 with `scikit-learn`, `MLFlow` and `pandas` installed.
+
+* GNU `make`
+
+* `conda`. The defaul virtual environment manager can be changed at the top of the Makefile.
+
+* Terraform 
+
+* AWS CLI
+
+* Appropriate AWS permissions
+
+
+# Set up
+
+![Set up workflow](./other/images/setup.png "Set up workflow")
+
 # Usage
 
-This repository is intended to be forked and used as a control centre for ML operations, through pull requests and GitHub Actions jobs. A Makefile also exposes rules to manage model life cycle from a local environment. The following diagram offers a high level view of the platform architecture.
+This repository is intended to be forked and used as a control centre for ML operations, through pull requests and GitHub Actions jobs. A Makefile also exposes rules to manage model life cycle from a local environment. The following diagram offers a high level view of the platform's architecture and how it relates to available `make` rules.
 
 ![Platform architecture diagram](./other/images/architecture.png "Platform architecture")
 
-## Adding a model
+## Adding a new model
 
-When a model graduates from the experimentation stage, it can be added to the repository through a pull request, in the form of a new MLFlow Project folder. In order to validate the model by testing local training and serving, the following is expected:
+When a model graduates from the experimentation stage, it can be added to the repository through a pull request, as a new MLFlow Project folder in `ml-projects`. In order to validate the model by testing local training and serving, the following is expected:
 
 1. There is a `data.py` in the MLFlow Project with a `get_data()` function with which the model fetches training data, and outputs a tuple of objects `X, y` for the model to be fitted (see `test-project/`).
 
@@ -35,15 +54,39 @@ When a model graduates from the experimentation stage, it can be added to the re
 
 ## Model retraining
 
-Model retraining can be triggered from the local development environment using `make` rules, or by triggering a GitHub actions job. The latter is recommended to avoid uncommited code leaking into registered models. The retrained model is added as a new version of the project in MLFlow Model Registry.
+Model retraining can be triggered from the local development environment using 
+
+```
+make local-retraining model=<my-project>/<my-version>
+``` 
+
+or 
+
+```
+make remote-retraining model=<my-project>/<my-version>
+``` 
+
+or by triggering a GitHub actions job. The latter is recommended to avoid uncommited code leaking into registered models. The retrained model is added as a new version of the project in MLFlow Model Registry.
 
 ## Model deployment
 
-Just as model retraining, this can be done sing `make` rules, or by triggering a GitHub actions job. When a model is deployed, an [AWS SageMaker endpoint](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints.html) is created for live prediction. This can be used for batch prediction as well.
+Just as model retraining, this can be done using 
+
+```
+make local-deployment model=<my-project>/<my-version>
+``` 
+
+or 
+
+```
+make remote-deployment model=<my-project>/<my-version>
+``` 
+
+rules, or by triggering a GitHub actions job. When a model is deployed, an [AWS SageMaker endpoint](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints.html) is created for live predictions. This can be used for batch prediction as well.
 
 ## Model monitoring
 
-Whenever a model is deployed, monitoring dashboards are created in AWS CloudWatch to keep track of the endpoint's performance and statistics. This includes
+Whenever a new SageMaker endpoint is created, monitoring dashboards are also created in AWS CloudWatch to keep track of the endpoint's performance and statistics. This includes
 
 * Infrastructure metrics dashboard with number of requests, RAM usage and latency
 
@@ -53,7 +96,7 @@ The dashboard names are `<project-name>_stats` and `<project-name>_metrics`.
 
 ## Model decomissioning or rollback
 
-Use `make` rules to deploy a different version of the model from MLFlow Model Registry into the SageMaker endpoint. Use the MLFlow Model Registry UI to tag models as deprecated.
+Use `make remote-deployment project=<my-project>/<my-version>` to redeploy a specific version of the model from MLFlow Model Registry into the SageMaker endpoint. Use the MLFlow Model Registry UI to tag models as deprecated.
 
 # Components
 
@@ -88,25 +131,6 @@ remote-batch-inference  Runs a batch inference job remotely, using .csv inputs a
                         Pass --model-name and --model-version to specify the model to use from the MLFlow registry. 
 remote-deployment       Deploys the model to a SageMaker endpoint using MLFLow. Pass --model-name and --model-version to specify  the model to deploy from the MLFlow registry. 
 ```
-
-# Requirements
-
-* Python >= 3.10 with `scikit-learn`, `MLFlow` and `pandas` installed.
-
-* GNU `make`
-
-* `conda`. The defaul virtual environment manager can be changed at the top of the Makefile.
-
-* Terraform 
-
-* AWS CLI
-
-* Appropriate AWS permissions
-
-
-# Set up
-
-![Set up workflow](./other/images/setup.png "Set up workflow")
 
 # Setting up an MLFlow server (optional)
 

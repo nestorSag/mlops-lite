@@ -1,42 +1,40 @@
-# main.tf
-
-# Include the S3 module (mandatory)
-module "s3" {
-  source = "./s3"
-  # Pass in required variables here
+terraform {
+  backend "s3" {}
 }
 
-# Conditionally include the ECR module
-module "ecr" {
-  source = "./ecr"
-  count  = var.deploy_ecr ? true : false
-  # Pass in required variables here
+# data "terraform_remote_state" "state" {
+#   backend = "s3"
+#   config {
+#     bucket     = "${var.state_bucket_name}"
+#     region     = "${var.region}"
+#     key        = "${var.project}/${var.env_name}/terraform.tfstate"
+#   }
+# }
+
+
+provider "aws" {
+  region = var.region
+  default_tags {
+    tags = local.tags
+  }
 }
 
-module "vpn-client" {
-  source  = "babicamir/vpn-client/aws"
-  version = "{version}"
-  organization_name      = "OrganizationName"
-  project-name           = "MyProject"
-  environment            = "default"
-  # Network information
-  vpc_id                 = "{VPC id}"
-  subnet_id              = "{subnet id}"
-  client_cidr_block      = "172.0.0.0/22" # It must be different from the primary VPC CIDR
-  # VPN config options
-  split_tunnel           = "true" # or false
-  vpn_inactive_period = "300" # seconds
-  session_timeout_hours  = "8"
-  logs_retention_in_days = "7"
-  # List of users to be created
-  aws-vpn-client-list    = ["root", "user-1", "user2"] #Do not delete "root" user!
+data "aws_ssm_parameter" "build_mlflow_server" {
+  # values for this parameter are automatically pushed by Makefile rules
+  name = "/${var.project}/${var.region}/${var.env_name}/build-mlflow-server"
 }
 
-# Conditionally include the mlflow-server module
 module "mlflow_server" {
-  source = "./mlflow-server"
-  count  = var.deploy_mlflow_server ? true : false
-  # Pass the ECR repository URL from the ecr module
-  ecr_repository_url = module.ecr[0].repository_url
-}
+    source = "./mlflow-server"
 
+    db_params = var.db_params
+    server_params = var.server_params
+    vpc_params = var.vpc_params
+    vpn_params = var.vpn_params
+
+    region = var.region
+    env_name = var.env_name
+    project = var.project
+
+    count = tobool(data.aws_ssm_parameter.build_mlflow_server.value) ? 1 : 0
+}

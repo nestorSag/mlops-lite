@@ -1,7 +1,7 @@
 locals {
-  # Common tags to be assigned to all resources
-  tags = {
-    Name        = "mlflow-terraform"
-    Environment = var.env
-  }
+    dockerfile_sha = sha1(file("${path.module}/docker/Dockerfile"))
+    vpc_endpoints = {
+        s3              = "Gateway",
+        secretsmanager  = "Interface",
+    }
 }

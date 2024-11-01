@@ -1,0 +1,10 @@
+
+# ignore .terraform folders
+.terraform
+
+# ignore backend config file
+terraform/backend.conf
+
+*.pyc
+
+*.hcl
