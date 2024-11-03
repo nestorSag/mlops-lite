@@ -28,6 +28,7 @@ variable "db_params" {
         username          = string
         port              = string
         family            = string
+        deletion_protection = bool
     })
 }
 
@@ -59,4 +60,9 @@ variable "project" {
 
 variable "state_bucket_name" {
     description = "Name of the S3 bucket to use for storing Terraform state. This variable should be set as an environmental variable with the name 'TF_VAR_state_bucket_name'."
+}
+
+variable "s3_force_destroy" {
+    description = "Force destroy S3 bucket even if it contains objects"
+    type        = bool
 }
