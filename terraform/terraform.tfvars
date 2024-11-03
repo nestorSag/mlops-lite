@@ -25,6 +25,7 @@ db_params = {
     name              = "mlflowdb"
     username          = "mlflow_db_user"
     port              = "3306"
+    deletion_protection = false
 }
 
 server_params = {
@@ -34,3 +35,5 @@ server_params = {
     port = 5000
     name = "mlflow_server"
 }
+
+s3_force_destroy = true

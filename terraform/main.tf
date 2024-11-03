@@ -19,13 +19,8 @@ provider "aws" {
   }
 }
 
-data "aws_ssm_parameter" "build_mlflow_server" {
-  # values for this parameter are automatically pushed by Makefile rules
-  name = "/${var.project}/${var.region}/${var.env_name}/build-mlflow-server"
-}
-
 module "mlflow_server" {
-    source = "./mlflow-server"
+    source = "git::https://github.com/nestorSag/terraform-aws-mlflow-server.git?ref=90ad1e8"
 
     db_params = var.db_params
     server_params = var.server_params
