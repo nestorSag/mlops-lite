@@ -63,12 +63,10 @@ help:
 # 	echo "Argument 2: $(arg2)"
 
 ## Re-runs an MLFlow project locally and optionally creates a new version of the model in the MLFlow registry.
-## Example usage: make local-training project=test-project register=True.
+## Example usage: make local-training project=test-project.
 local-training:
 	mlflow run ml-projects/$(project) \
-		--experiment-name $(project) \
-		-P register=$(register) \
-		-P experiment_name=$(project)
+		--experiment-name $(project)
 
 ## Deploys the model to a local endpoint in port 5050 using MLFLow. This command is blocking.
 ## Example usage: make local-deployment model=test-project.
@@ -128,6 +126,13 @@ update-ssm-set:
     fi
 	make tf-apply
 
+training-image:
+	mkdir tmp
+	cp Makefile tmp/
+	cp -r $(project) tmp/$(project)
+	cp ./other/docker/mlproject-template/Dockerfile tmp/Dockerfile
+	docker build -t $(project):$$(sha1sum path/to/folder/* | sha1sum) --build-arg PROJECT=$(project)
+	rm -rf tmp/
 # Sets default values for training-job rule
 training-job: ssm_param=$(SSM_TRAINING_JOB_SET) update_action=add
 ## Provisions the training job pipeline infrastructure and launches it. Example use: make training-job project=test-project.
