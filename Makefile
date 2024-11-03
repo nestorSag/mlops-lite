@@ -127,12 +127,13 @@ update-ssm-set:
 	make tf-apply
 
 training-image:
-	mkdir tmp
+	mkdir -p tmp
 	cp Makefile tmp/
-	cp -r $(project) tmp/$(project)
+	cp -r ./ml-projects/$(project) tmp/$(project)
 	cp ./other/docker/mlproject-template/Dockerfile tmp/Dockerfile
-	docker build -t $(project):$$(sha1sum path/to/folder/* | sha1sum) --build-arg PROJECT=$(project)
+	docker build -t $(project):$$(find ./tmp/$(project) -type f -exec sha256sum {} + | sort -k 2 | sha256sum | cut -d ' ' -f 1) --build-arg PROJECT=$(project) ./tmp
 	rm -rf tmp/
+
 # Sets default values for training-job rule
 training-job: ssm_param=$(SSM_TRAINING_JOB_SET) update_action=add
 ## Provisions the training job pipeline infrastructure and launches it. Example use: make training-job project=test-project.
