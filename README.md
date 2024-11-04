@@ -24,7 +24,7 @@ It should work out of the box for models that can be trained in a single EC2 ins
 
 ## MLFlow provisioning (optional)
 
-This project uses [this Terraform module](https://github.com/nestorSag/terraform-aws-mlflow-server) to provision a production MLFlow server if one is needed. Run `make mlflow-server` to start the process, or `make mlflow-server-rm` to tear it down.
+This project uses [this Terraform module](https://github.com/nestorSag/terraform-aws-mlflow-server) to provision a production MLFlow server if one is needed. Run `make mlflow-server` to start the process, or `make mlflow-server-rm` to tear it down. The server architecture is shown below.
 
 ![Architecture diagram](other/images/mlflow-server.png)
 
@@ -53,7 +53,9 @@ run `make training-job project=<my-project>`, where `my-project` is a subfolder 
 
 3. Create AWS Batch compute environments, queue and task definitions if necessary.
 
-Your training job will be launched on top of the above infrastructure. The end result is a new registered model in your MLFlow Registry (which your MLProject is assumed to handle internally), in experiment `<my-project>`. The MLFlow tracking URI is propagated automatically, do not hardcode it.
+Your training job will be launched on top of the above infrastructure. The end result is a new registered model in your MLFlow Registry (which your MLProject is assumed to handle internally), with name `<my-project>`. The MLFlow tracking URI is propagated automatically, do not hardcode it.
+
+![Architecture diagram](other/images/training-jobs.png)
 
 You can configure Terraform variables with an email list that gets notified whenever a job fails or succeeds.
 
