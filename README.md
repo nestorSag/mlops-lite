@@ -10,6 +10,8 @@ It should work out of the box for models that can be trained in a single EC2 ins
 
 * GNU `make`
 
+* Python 3
+
 * Terraform 
 
 * AWS CLI
@@ -22,20 +24,24 @@ It should work out of the box for models that can be trained in a single EC2 ins
 
 ## MLFlow provisioning (optional)
 
-This project uses this Terraform module to provision a production MLFlow server if one is needed. Run `make mlflow-server` to start the process, or `make mlflow-server-rm` to tear it down.
+This project uses [this Terraform module](https://github.com/nestorSag/terraform-aws-mlflow-server) to provision a production MLFlow server if one is needed. Run `make mlflow-server` to start the process, or `make mlflow-server-rm` to tear it down.
+
+![Architecture diagram](other/static/mlflow-server.png)
+
+
 If you have an existing MLFlow server you can skip this step, but you will have to set `MLFLOW_TRACKING_URI` to your tracking URI.
 
 ## Adding a new model
 
-Add a new subfolder in the `ml-projects` folder. Keep in mind the following assumptions:
+Add a new subfolder in the `ml-projects` folder with the following constraints:
 
-* Models should be packaged as valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html) and added as additional subfolders in the `ml-projects` folder. 
+* Models should be packaged as valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html).
 
 * They should have an `MLProject` file specifying entry points and environment managers. 
 
 * They should be runnable with `mlflow run` without passing any additional arguments (set defaults as needed). Both `conda` and `venv` environment managers are supported.
 
-* The `MLProject` code is responsible for fetching the data, training the model and logging it to MLFlow along with its metrics. See the example. Even a jupyter notebook should be fine, as long as it does the latter.
+* The `MLProject` code is responsible for fetching the data, training the model and logging it to MLFlow along with its metrics. See the example included. Note even jupyter notebooks are fine, as long as it does the latter.
 
 ## Launching training jobs
 
@@ -47,7 +53,9 @@ run `make training-job project=<my-project>`, where `my-project` is a subfolder 
 
 3. Create AWS Batch compute environments, queue and task definitions if necessary.
 
-Your training job will be launched on top of the above infrastructure. The end result is a new registered model in your MLFlow Registry (which your MLProject is assumed to handle internally), in experiment `<my-project>`. The MLFlow tracking URI is propagated automatically.
+Your training job will be launched on top of the above infrastructure. The end result is a new registered model in your MLFlow Registry (which your MLProject is assumed to handle internally), in experiment `<my-project>`. The MLFlow tracking URI is propagated automatically, do not hardcode it.
+
+You can configure Terraform variables with an email list that gets notified whenever a job fails or succeeds.
 
 ### Specifying computational requirements
 
@@ -65,17 +73,17 @@ The GPU line is optional, and you can remove it if your model does not use GPUs.
 
 ### Tearing down training job infrastructure
 
-Traning job infrastructure for a specific model can be tear down with `make training-job-rm project=<my-project>`
+Training job infrastructure for a specific project can be tear down with `make training-job-rm project=<my-project>`
 
 ## Launching deployment jobs 
 
-run `make deployment-job project=<my-project> model=<my-version>`, where `my-project` is a subfolder in `ml-projects` and `<my-version>` is an available model version in the MLFlow Registry. This will use Terraform to
+run `make deployment-job project=<my-project> model=<my-version>`, where `my-project` is a subfolder in `ml-projects` and `<my-version>` is an available model version in the MLFlow Registry under the `<my-project>` experiment. This will use Terraform to
 
 1. Continerise a specific model from the MLFlow Registry
 
 2. Create an AWS SageMaker endpoint where the model is to be deployed
 
-3. Create CloudWatch dashboards to track trends in server metrics, as well as model input and output metrics.
+3. Create CloudWatch dashboards to track endpoint metrics, as well as model and data metrics.
 
 ### Specifying SageMaker endpoint configuration
 
@@ -125,12 +133,12 @@ export TF_VAR_env_name=<my-env>
 export MLFLOW_TRACKING_URI=<my-uri>
 ```
 
-If you provision it, make sure to select appropriate values for the server and DB parameters. This will depend on the expected server load.
+If you provision it, make sure to select appropriate values for the server and DB parameters. This will depend on your expected server load.
 
-3. If a VPN is needed to reach your MLFlow server (that is the case if you provision it with this project; the VPN and its credentials is provisioned along with the server), make sure to pass the VPN credentials to GitHub Actions or your local environment.
+3. If a VPN is needed to reach your MLFlow server (that is the case if you provision it with this project; the VPN and its credentials are provisioned along with the server), make sure to pass the VPN credentials to GitHub Actions or your local environment.
 
 4. Set your Terraform variables through `terraform.tfvars` file or in some other way.
 
 5. Make sure that your local environment and/or GitHub actions have appropriate credentials. Keep in mind this project uses many AWS services such as S3, ECR, Batch, SageMaker, Parameter Store, and others.
 
-6. You are ready to go 🚀
+6. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to warm up.
