@@ -26,7 +26,7 @@ It should work out of the box for models that can be trained in a single EC2 ins
 
 This project uses [this Terraform module](https://github.com/nestorSag/terraform-aws-mlflow-server) to provision a production MLFlow server if one is needed. Run `make mlflow-server` to start the process, or `make mlflow-server-rm` to tear it down.
 
-![Architecture diagram](other/static/mlflow-server.png)
+![Architecture diagram](other/images/mlflow-server.png)
 
 
 If you have an existing MLFlow server you can skip this step, but you will have to set `MLFLOW_TRACKING_URI` to your tracking URI.
