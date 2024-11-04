@@ -1,141 +1,136 @@
-# MLOps control centre with MLFlow + AWS SageMaker
+# MLOps control centre with Terraform + MLFlow + AWS
 
-This project is intended to provide a minimal MLOps control centre to train, track, deploy, monitor and retire ML models using MLFlow and AWS SageMaker. 
+This project is intended to provide a lean MLOps control centre to train, track, deploy, monitor and retire ML models using MLFlow and Terraform on AWS.
 
 # Scope
 
-This project should work out of the box for tabular models trained on data sets that fit into a single EC2 instance (up to several hundred GBs of RAM, depending on instance size). 
-
-# Assumptions
-
-Models should be packaged as valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html). It is assumed that in the project folder, there is a `data.py` module with a function with the following signature
-
-```py
-def get_data() -> t.Tuple[t.Any, t.Any]
-# usage: 
-# X, y = get_data()
-# model.fit(X, y)
-```
-
-this function does not take arguments. This means it is assumed that it always fetches valid, recent training data. Any external data processing pipelines necessary for this to work are out of the scope of this repository.
+It should work out of the box for models that can be trained in a single EC2 instance (up to a few hundred GBs of RAM usage, depending on instance type). 
 
 # Requirements
 
-* Python >= 3.10 with `scikit-learn`, `MLFlow` and `pandas` installed.
-
 * GNU `make`
-
-* `conda`. The defaul virtual environment manager can be changed at the top of the Makefile.
 
 * Terraform 
 
 * AWS CLI
 
+* Docker (`sudo`-less)
+
 * Appropriate AWS permissions
 
+# Workflow
 
-# Set up
+## MLFlow provisioning (optional)
 
-![Set up workflow](./other/images/setup.png "Set up workflow")
-
-# Usage
-
-This repository is intended to be forked and used as a control centre for ML operations, through pull requests and GitHub Actions jobs. A Makefile also exposes rules to manage model life cycle from a local environment. The following diagram offers a high level view of the platform's architecture and how it relates to available `make` rules.
-
-![Platform architecture diagram](./other/images/architecture.png "Platform architecture")
+This project uses this Terraform module to provision a production MLFlow server if one is needed. Run `make mlflow-server` to start the process, or `make mlflow-server-rm` to tear it down.
+If you have an existing MLFlow server you can skip this step, but you will have to set `MLFLOW_TRACKING_URI` to your tracking URI.
 
 ## Adding a new model
 
-When a model graduates from the experimentation stage, it can be added to the repository through a pull request, as a new MLFlow Project folder in `ml-projects`. In order to validate the model by testing local training and serving, the following is expected:
+Add a new subfolder in the `ml-projects` folder. Keep in mind the following assumptions:
 
-1. There is a `data.py` in the MLFlow Project with a `get_data()` function with which the model fetches training data, and outputs a tuple of objects `X, y` for the model to be fitted (see `test-project/`).
+* Models should be packaged as valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html) and added as additional subfolders in the `ml-projects` folder. 
 
-2. `get_data()` should output a testing slice of the data whenever `TEST_ENV=True`. Model registration into MLFlow Model Registry should be skipped based on this variable too.
+* They should have an `MLProject` file specifying entry points and environment managers. 
 
-## Model retraining
+* They should be runnable with `mlflow run` without passing any additional arguments (set defaults as needed). Both `conda` and `venv` environment managers are supported.
 
-Model retraining can be triggered from the local development environment using 
+* The `MLProject` code is responsible for fetching the data, training the model and logging it to MLFlow along with its metrics. See the example. Even a jupyter notebook should be fine, as long as it does the latter.
 
-```
-make local-retraining model=<my-project>/<my-version>
-``` 
+## Launching training jobs
 
-or 
+run `make training-job project=<my-project>`, where `my-project` is a subfolder in `ml-projects`. This will use Terraform to
 
-```
-make remote-retraining model=<my-project>/<my-version>
-``` 
+1. Containerise your MLProject
 
-or by triggering a GitHub actions job. The latter is recommended to avoid uncommited code leaking into registered models. The retrained model is added as a new version of the project in MLFlow Model Registry.
+2. Create an ECR for your container
 
-## Model deployment
+3. Create AWS Batch compute environments, queue and task definitions if necessary.
 
-Just as model retraining, this can be done using 
+Your training job will be launched on top of the above infrastructure. The end result is a new registered model in your MLFlow Registry (which your MLProject is assumed to handle internally), in experiment `<my-project>`. The MLFlow tracking URI is propagated automatically.
 
-```
-make local-deployment model=<my-project>/<my-version>
-``` 
+### Specifying computational requirements
 
-or 
+You can add a `resource-requirements.json` file in `ml-projects/<my-project>` with the following format to specify the computational requirements of your training job:
 
-```
-make remote-deployment model=<my-project>/<my-version>
-``` 
-
-rules, or by triggering a GitHub actions job. When a model is deployed, an [AWS SageMaker endpoint](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints.html) is created for live predictions. This can be used for batch prediction as well.
-
-## Model monitoring
-
-Whenever a new SageMaker endpoint is created, monitoring dashboards are also created in AWS CloudWatch to keep track of the endpoint's performance and statistics. This includes
-
-* Infrastructure metrics dashboard with number of requests, RAM usage and latency
-
-* Statistics dashboard with input and output trends over time. 
-
-The dashboard names are `<project-name>_stats` and `<project-name>_metrics`.
-
-## Model decomissioning or rollback
-
-Use `make remote-deployment project=<my-project>/<my-version>` to redeploy a specific version of the model from MLFlow Model Registry into the SageMaker endpoint. Use the MLFlow Model Registry UI to tag models as deprecated.
-
-# Components
-
-The main components of this repository are
-
-* **Terraform components** (`terraform/`): Terraform is used to set up components such as
-
-    * S3 buckets
-
-    * ECS repository
-
-    * MLFlow server (optional)
-
-* **Projects** (e.g. `test-project/`): Folders that contain valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html) which train, evaluate and register a model in the MLFLow server and can be run using MLFlow's CLI. Each folder is associated to a different ML model. This repository only contains a test project.
-
-* `Makefile`: This file contains entry points to control the model's life cycle. The entry points admit certain parameters to specify e.g. the project to run. Use `make` to see more details. Current options are 
-
-
-```
-help                    Display this help message 
-local-batch-inference   Runs a batch inference job locally, using .csv inputs and outputs. 
-                        Example usage: make local-batch-inference model=main-project/latest inference_input=input/path.csv inference_output=output/path.csv. 
-local-deployment        Deploys the model to a local endpoint in port 5050 using MLFLow. This command is blocking. 
-                        Example usage: make local-deployment model=main-project. 
-local-deployment-test   Runs a test request to the local endpoint and returns the result. 
-local-training          Re-runs an MLFlow project locally and optionally creates a new version of the model in the MLFlow registry. 
-                        Example usage: make local-training project=main-project register=True. 
-mlflow-server           Bootstraps the MLflow server using the Terraform configuration in tf/ 
-mlflow-server-rm        Destroys the MLflow server created with the Terraform configuration in tf/ 
-monitoring-job          Starts a monitoring job on a SageMaker endpoint. 
-remote-batch-inference  Runs a batch inference job remotely, using .csv inputs and outputs. 
-                        Pass --model-name and --model-version to specify the model to use from the MLFlow registry. 
-remote-deployment       Deploys the model to a SageMaker endpoint using MLFLow. Pass --model-name and --model-version to specify  the model to deploy from the MLFlow registry. 
+```json
+[
+    {"type": "VCPU", "value": "2"},
+    {"type": "MEMORY", "value": "4096"},
+    {"type": "GPU", "value": "1"}
+]
 ```
 
-# Setting up an MLFlow server (optional)
+The GPU line is optional, and you can remove it if your model does not use GPUs. If this file is not found, default values are used. You can set your own defaults with Terraform's `default_resource_requirements` variable.
 
-You can go ahead and set up an MLFlow server if you don't have one already, using `make mlflow-server`. It is spun up on AWS with an architecture as in the following diagram:
+### Tearing down training job infrastructure
 
-![MLFLow server architecture diagram](./other/images/mlflow-server.png "MLFlow server architecture")
+Traning job infrastructure for a specific model can be tear down with `make training-job-rm project=<my-project>`
 
-Note it uses billable services. Note also that AWS now offers a fully managed MLFlow server, but the one provided by this project is thought for low-cost operations. Adapt the Terraform project to your use case, and use the [AWS calculator](https://calculator.aws/#/) for cost estimates.
+## Launching deployment jobs 
+
+run `make deployment-job project=<my-project> model=<my-version>`, where `my-project` is a subfolder in `ml-projects` and `<my-version>` is an available model version in the MLFlow Registry. This will use Terraform to
+
+1. Continerise a specific model from the MLFlow Registry
+
+2. Create an AWS SageMaker endpoint where the model is to be deployed
+
+3. Create CloudWatch dashboards to track trends in server metrics, as well as model input and output metrics.
+
+### Specifying SageMaker endpoint configuration
+
+You can add a `resource-requirements.json` file in `ml-projects/<my-project>` with the following format to specify the computational requirements of your training job:
+
+```json
+[
+    {"type": "VCPU", "value": "2"},
+    {"type": "MEMORY", "value": "4096"},
+    {"type": "GPU", "value": "1"}
+]
+```
+
+The GPU line is optional, and you can remove it if your model does not use GPUs. If this file is not found, default values are used. You can set your own defaults with Terraform's `default_resource_requirements` variable.
+
+### Tearing down deployment job infrastructure
+
+Deployment job infrastructure for a specific project can be tear down with `make deployment-job-rm project=<my-project>`
+
+## Model updates and rollbacks
+
+Both model updates and rollbacks are handled by simply deploying a different model version under an existing endpoint.
+
+
+# Life cycle management with GitHub actions
+
+Every step of the workflow above can be performed by manually launching GitHub action workflows. This has the advantage of preventing uncommited code leaks into your model life cycle, and setting clear permissions boundaries for who can launch what kind of job.
+
+# Getting started
+
+Whether your launch environment is your local machine or GitHub Actions, you will need to
+
+1. Define the following environment variables
+
+```sh
+export TF_VAR_state_bucket_name=<my-bucket>
+export TF_VAR_region=<my-region>
+export TF_VAR_project=<my-project>
+export TF_VAR_env_name=<my-env>
+```
+
+`TF_VAR_state_bucket_name` holds the S3 bucket with the global Terraform state. This is needed for GitHub Actions to work, and also if multiple people can launch jobs. In the latter case, it is recommended to set a Terraform state lock table as well.
+
+2. Decide whether to provision an MLFlow server or bring your own. If you bring your own, in addition to the above you need to define
+
+```sh
+export MLFLOW_TRACKING_URI=<my-uri>
+```
+
+If you provision it, make sure to select appropriate values for the server and DB parameters. This will depend on the expected server load.
+
+3. If a VPN is needed to reach your MLFlow server (that is the case if you provision it with this project; the VPN and its credentials is provisioned along with the server), make sure to pass the VPN credentials to GitHub Actions or your local environment.
+
+4. Set your Terraform variables through `terraform.tfvars` file or in some other way.
+
+5. Make sure that your local environment and/or GitHub actions have appropriate credentials. Keep in mind this project uses many AWS services such as S3, ECR, Batch, SageMaker, Parameter Store, and others.
+
+6. You are ready to go 🚀
