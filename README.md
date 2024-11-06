@@ -24,21 +24,24 @@ It should work out of the box for models that can be trained in a single EC2 ins
 
 ## MLFlow provisioning
 
-This project uses [this Terraform module](https://github.com/nestorSag/terraform-aws-mlflow-server) to provision a production MLFlow server if one is needed. Run `make mlflow-server` to start the process, or `make mlflow-server-rm` to tear it down. The server architecture is shown below.
+This project uses [this Terraform module](https://github.com/nestorSag/terraform-aws-mlflow-server) to provision a production MLFlow server. Run `make mlflow-server` to start the process, and `make mlflow-server-rm` to tear it down. The server architecture is shown below.
 
 ![Architecture diagram](other/images/mlflow-server.png)
 
-## Adding a new model
+This server will register and containerise any models added to this platform. You can also use it as an experiment tracking platform.
+The server is accessible through a VPN, which is created and managed by Terraform as part of the platform. See the [repo](https://github.com/nestorSag/terraform-aws-mlflow-server) for access instructions.
 
-Add a new subfolder in the `ml-projects` folder with the following constraints:
+## Integrating a new model
 
-* Models should be packaged as valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html).
+Add a new subfolder in the `ml-projects` folder sticking to the following constraints:
 
-* They should have an `MLProject` file specifying entry points and environment managers. 
+* Folders should be structured as valid [MLFlow projects](https://mlflow.org/docs/latest/projects.html).
 
-* They should be runnable with `mlflow run` without passing any additional arguments (set defaults as needed). Both `conda` and `venv` environment managers are supported.
+* They should have an `MLProject` file specifying entry points and environment managers. Both `conda` and `venv` environment managers are supported.
 
-* The `MLProject` code is responsible for fetching the data, training the model and logging it to MLFlow along with its metrics. See the example included. Note even jupyter notebooks are fine, as long as it does the latter.
+* They should be runnable with `mlflow run` without passing any additional `-P` arguments; set defaults as needed.
+
+* Your `MLProject` code is responsible for fetching the data (e.g. from S3), training the model and logging it to MLFlow along with any other artifacts; you can assume `MLFLOW_TRACKING_URI` will point to the provisioned server automatically. See the example included. Note even jupyter notebooks are fine, as long as they log the model as a valid [MLFlow Model](https://mlflow.org/docs/latest/models.html); this is straightforward for most ML libraries in Python.
 
 ## Launching training jobs
 
@@ -76,7 +79,7 @@ Training job infrastructure for a specific project can be tear down with `make t
 
 ## Launching deployment jobs 
 
-run `make deployment-job project=<my-project> model=<my-version>`, where `my-project` is a subfolder in `ml-projects` and `<my-version>` is an available model version in the MLFlow Registry under the `<my-project>` experiment. This will use Terraform to
+run `make deployment-job project=<my-project> model=<my-version>`, where `my-project` is a subfolder in `ml-projects` and `<my-version>` is an available model version in the MLFlow Registry under the `<my-project>` experiment. This will use Terraform and MLFlow to
 
 1. Continerise a specific model from the MLFlow Registry
 
@@ -102,7 +105,7 @@ The GPU line is optional, and you can remove it if your model does not use GPUs.
 
 Deployment job infrastructure for a specific project can be tear down with `make deployment-job-rm project=<my-project>`
 
-## Model updates and rollbacks
+## Model rollouts and rollbacks
 
 Both model updates and rollbacks are handled by simply deploying a different model version under an existing endpoint.
 
@@ -126,12 +129,16 @@ export TF_VAR_env_name=<my-env>
 
 `TF_VAR_state_bucket_name` holds the S3 bucket with the global Terraform state. This is needed for GitHub Actions to work, and also if multiple people can launch jobs. In the latter case, it is recommended to set a Terraform state lock table as well.
 
-If you provision it, make sure to select appropriate values for the server and DB parameters. This will depend on your expected server load.
+2. Make sure your AWS CLI is configured appropriately
 
-2. If a VPN is needed to reach your MLFlow server (that is the case if you provision it with this project; the VPN and its credentials are provisioned along with the server), make sure to pass the VPN credentials to GitHub Actions or your local environment.
+3. Make sure to set appropriate values for Terraform variables, including reasonable server capacity parameters.
 
-3. Set your Terraform variables through `terraform.tfvars` file or in some other way.
+4. As long as you have the necessary AWS permissions can provision the MLFlow server at this point.
 
-4. Make sure that your local environment and/or GitHub actions have appropriate credentials. Keep in mind this project uses many AWS services such as S3, ECR, Batch, SageMaker, Parameter Store, and others.
+4. Set up the server's VPN locally, and in GitHub Actions if applicable.
 
-5. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to warm up.
+5. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to try training and deployment job provisioning.
+
+⚠️ Keep in mind this project requires broad permissions across multiple services such as ECS, S3, VPC, SNS, RDS, SageMaker, among others.
+
+⚠️ This project uses billable services.
