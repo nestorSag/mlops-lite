@@ -22,14 +22,11 @@ It should work out of the box for models that can be trained in a single EC2 ins
 
 # Workflow
 
-## MLFlow provisioning (optional)
+## MLFlow provisioning
 
 This project uses [this Terraform module](https://github.com/nestorSag/terraform-aws-mlflow-server) to provision a production MLFlow server if one is needed. Run `make mlflow-server` to start the process, or `make mlflow-server-rm` to tear it down. The server architecture is shown below.
 
 ![Architecture diagram](other/images/mlflow-server.png)
-
-
-If you have an existing MLFlow server you can skip this step, but you will have to set `MLFLOW_TRACKING_URI` to your tracking URI.
 
 ## Adding a new model
 
@@ -129,18 +126,12 @@ export TF_VAR_env_name=<my-env>
 
 `TF_VAR_state_bucket_name` holds the S3 bucket with the global Terraform state. This is needed for GitHub Actions to work, and also if multiple people can launch jobs. In the latter case, it is recommended to set a Terraform state lock table as well.
 
-2. Decide whether to provision an MLFlow server or bring your own. If you bring your own, in addition to the above you need to define
-
-```sh
-export MLFLOW_TRACKING_URI=<my-uri>
-```
-
 If you provision it, make sure to select appropriate values for the server and DB parameters. This will depend on your expected server load.
 
-3. If a VPN is needed to reach your MLFlow server (that is the case if you provision it with this project; the VPN and its credentials are provisioned along with the server), make sure to pass the VPN credentials to GitHub Actions or your local environment.
+2. If a VPN is needed to reach your MLFlow server (that is the case if you provision it with this project; the VPN and its credentials are provisioned along with the server), make sure to pass the VPN credentials to GitHub Actions or your local environment.
 
-4. Set your Terraform variables through `terraform.tfvars` file or in some other way.
+3. Set your Terraform variables through `terraform.tfvars` file or in some other way.
 
-5. Make sure that your local environment and/or GitHub actions have appropriate credentials. Keep in mind this project uses many AWS services such as S3, ECR, Batch, SageMaker, Parameter Store, and others.
+4. Make sure that your local environment and/or GitHub actions have appropriate credentials. Keep in mind this project uses many AWS services such as S3, ECR, Batch, SageMaker, Parameter Store, and others.
 
-6. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to warm up.
+5. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to warm up.

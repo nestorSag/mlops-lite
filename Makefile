@@ -122,17 +122,10 @@ update-ssm-set:
 		--elem=$(project) \
 		--action=$(update_action); \
     else \
+		echo "Project folder $(project) not found. Please ensure that the project folder exists in ml-projects/."; \
         exit 1; \
     fi
 	make tf-apply
-
-training-image:
-	mkdir -p tmp
-	cp Makefile tmp/
-	cp -r ./ml-projects/$(project) tmp/$(project)
-	cp ./other/docker/mlproject-template/Dockerfile tmp/Dockerfile
-	docker build -t $(project):$$(find ./tmp/$(project) -type f -exec sha256sum {} + | sort -k 2 | sha256sum | cut -d ' ' -f 1) --build-arg PROJECT=$(project) ./tmp
-	rm -rf tmp/
 
 # Sets default values for training-job rule
 training-job: ssm_param=$(SSM_TRAINING_JOB_SET) update_action=add

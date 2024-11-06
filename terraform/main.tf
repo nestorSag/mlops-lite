@@ -2,26 +2,11 @@ terraform {
   backend "s3" {}
 }
 
-# data "terraform_remote_state" "state" {
-#   backend = "s3"
-#   config {
-#     bucket     = "${var.state_bucket_name}"
-#     region     = "${var.region}"
-#     key        = "${var.project}/${var.env_name}/terraform.tfstate"
-#   }
-# }
-
-
 provider "aws" {
   region = var.region
   default_tags {
     tags = local.tags
   }
-}
-
-data "aws_ssm_parameter" "build_mlflow_server" {
-  # values for this parameter are automatically pushed by Makefile rules
-  name = "/${var.project}/${var.region}/${var.env_name}/build-mlflow-server"
 }
 
 module "mlflow_server" {
@@ -40,7 +25,9 @@ module "mlflow_server" {
 }
 
 module "training_jobs" {
+
   source = "./training-jobs"
+
   default_resource_requirements = var.default_resource_requirements
   compute_env_subnet_ids = var.vpc_params.private_subnets
   mlflow_tracking_uri = module.mlflow_server.mlflow_tracking_uri
