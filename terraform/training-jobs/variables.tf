@@ -17,3 +17,8 @@ variable compute_env_subnet_ids {
 variable mlflow_tracking_uri {
     type    = string
 }
+
+variable training_jobs {
+    type    = list(string)
+    default = []
+}

@@ -1,5 +1,4 @@
 locals {
-    training_jobs = split(",", data.aws_ssm_parameter.training_jobs.value)
     job_definitions = {
         for job in local.training_jobs : job => {
             name           = job

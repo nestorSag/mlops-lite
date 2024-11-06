@@ -60,3 +60,19 @@ variable "project" {
 variable "state_bucket_name" {
     description = "Name of the S3 bucket to use for storing Terraform state. This variable should be set as an environmental variable with the name 'TF_VAR_state_bucket_name'."
 }
+
+variable default_resource_requirements {
+    type    = list(object({
+        type  = string
+        value = string
+    }))
+    # default = [
+    #     { type = "VCPU", value = "1" },
+    #     { type = "MEMORY", value = "1024" }
+    # ]
+}
+
+variable compute_env_subnet_ids {
+    type    = list(string)
+    default = []
+}

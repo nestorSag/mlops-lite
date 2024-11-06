@@ -34,3 +34,8 @@ server_params = {
     port = 5000
     name = "mlflow_server"
 }
+
+variable default_resource_requirements = [
+    { type = "VCPU", value = "2" },
+    { type = "MEMORY", value = "4096" }
+]

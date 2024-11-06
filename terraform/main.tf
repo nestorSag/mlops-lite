@@ -38,3 +38,11 @@ module "mlflow_server" {
 
     count = tobool(data.aws_ssm_parameter.build_mlflow_server.value) ? 1 : 0
 }
+
+module "training_jobs" {
+  source = "./training-jobs"
+  default_resource_requirements = var.default_resource_requirements
+  compute_env_subnet_ids = var.vpc_params.private_subnets
+  mlflow_tracking_uri = module.mlflow_server.mlflow_tracking_uri
+  training_jobs = split(",", data.aws_ssm_parameter.training_jobs.value)
+}

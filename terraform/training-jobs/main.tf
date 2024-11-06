@@ -1,7 +1,7 @@
 
 
 module "ecr" {
-  for_each = local.training_jobs
+  for_each = var.training_jobs
   source = "git::github.com/terraform-aws-modules/terraform-aws-ecr?ref=841b3c7"
 
   repository_name = each.key
