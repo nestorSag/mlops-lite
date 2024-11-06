@@ -1,6 +1,6 @@
 # MLOps control centre with Terraform + MLFlow + AWS
 
-This project is intended to provide a lean MLOps control centre to train, track, deploy, monitor and retire ML models using MLFlow and Terraform on AWS.
+This project is intended to provide a lean MLOps control centre to train, track, deploy, monitor and retire ML models using MLFlow and Terraform on AWS, doing so from your local machine or through GitHub action workflows
 
 # Scope
 
@@ -41,7 +41,7 @@ Add a new subfolder in the `ml-projects` folder sticking to the following constr
 
 * They should be runnable with `mlflow run` without passing any additional `-P` arguments; set defaults as needed.
 
-* Your `MLProject` code is responsible for fetching the data (e.g. from S3), training the model and logging it to MLFlow along with any other artifacts; you can assume `MLFLOW_TRACKING_URI` will point to the provisioned server automatically. See the example included. Note even jupyter notebooks are fine, as long as they log the model as a valid [MLFlow Model](https://mlflow.org/docs/latest/models.html); this is straightforward for most ML libraries in Python.
+* Your `MLProject` code is responsible for fetching the data (e.g. from S3), training the model and logging it to MLFlow along with any other artifacts; you can assume `MLFLOW_TRACKING_URI` will point to the provisioned server automatically. See the example included. Note even jupyter notebooks are fine, as long as they log the model as a valid [MLFlow Model](https://mlflow.org/docs/latest/models.html); this is straightforward to do for most ML libraries in Python using existing `mlflow` methods.
 
 ## Launching training jobs
 
@@ -133,11 +133,11 @@ export TF_VAR_env_name=<my-env>
 
 3. Make sure to set appropriate values for Terraform variables, including reasonable server capacity parameters.
 
-4. As long as you have the necessary AWS permissions can provision the MLFlow server at this point.
+4. As long as you have the necessary AWS permissions, you can provision the MLFlow server at this point.
 
 4. Set up the server's VPN locally, and in GitHub Actions if applicable.
 
-5. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to try training and deployment job provisioning.
+5. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to try provisioning training and deployment infrastructure.
 
 ⚠️ Keep in mind this project requires broad permissions across multiple services such as ECS, S3, VPC, SNS, RDS, SageMaker, among others.
 

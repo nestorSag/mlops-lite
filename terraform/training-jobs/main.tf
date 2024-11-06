@@ -214,3 +214,23 @@ resource "aws_iam_role_policy" "instance_policy" {
     ]
   })
 }
+
+
+module "sns_topic" {
+  source  = "git::github.com/terraform-aws-modules/terraform-aws-sns?ref=a696f46"
+
+  for_each = var.job_notification_list
+  name  = "${each.key}_training_job_status"
+
+  fifo_topic = false
+
+  create_subscription = true
+
+  subscriptions = {
+    email = {
+      protocol = "email"
+      endpoint = each.key
+
+    }
+  }
+}

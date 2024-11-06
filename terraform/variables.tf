@@ -76,3 +76,9 @@ variable compute_env_subnet_ids {
     type    = list(string)
     default = []
 }
+
+variable job_notification_list {
+    description = "List of email addresses to notify when a job completes or fails"
+    type    = list(string)
+    default = []
+}

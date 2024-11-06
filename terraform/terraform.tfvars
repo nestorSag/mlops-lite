@@ -35,7 +35,9 @@ server_params = {
     name = "mlflow_server"
 }
 
-variable default_resource_requirements = [
+default_resource_requirements = [
     { type = "VCPU", value = "2" },
     { type = "MEMORY", value = "4096" }
 ]
+
+job_notification_list = []
