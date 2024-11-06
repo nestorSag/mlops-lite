@@ -57,6 +57,9 @@ resource "null_resource" "bundle_build_and_push_mlproject_image" {
 module "batch" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-batch?ref=c478369"
 
+  create_service_iam_role = false
+  create_instance_iam_role = false
+  
   compute_environments = {
     fargate_compute_env = {
       name_prefix = "fargate"
@@ -66,6 +69,8 @@ module "batch" {
 
         security_group_ids = [module.vpc_endpoint_security_group.security_group_id]
         subnets            = var.compute_env_subnet_ids
+        service_role       = aws_iam_role.service_role.arn
+        instance_role      = aws_iam_role.instance_role.arn
 
       }
     }
@@ -87,4 +92,125 @@ module "batch" {
   }
 
   job_definitions = local.job_definitions
+}
+
+
+
+resource "aws_iam_role" "service_role" {
+  name = "service_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = "Allow AWS Batch to assume this role"
+        Principal = {
+          Service = "batch.amazonaws.com"
+        }
+      },
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = "Allow ECS tasks to assume this role"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      },
+    ]
+  })
+}
+
+
+resource "aws_iam_role_policy" "service_policy" {
+  name = "test_policy"
+  role = aws_iam_role.service_role.id
+
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        sid = "AllowS3BucketAccess",
+        Effect = "Allow",
+        Actions = [
+          "s3:GetObject",
+          "s3:GetBucketLocation",
+          "s3:ListBucket",
+          "s3:HeadObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ],
+        Resources = ["*"]
+      },
+      {
+        Effect = "Allow",
+        Actions = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+        ],
+        Resources = [for r in module.ecr : r.repository_arn]
+      },
+      {
+        Effect = "Allow",
+        Actions = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:CreateLogGroup"
+        ],
+        Resources = ["*"]
+      }
+
+    ]
+  })
+}
+
+
+resource "aws_iam_role" "instance_role" {
+  name = "instance_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = "Allow EC2 instances to assume this role"
+        Principal = {
+          Service = "ec2.amazonaws.com",
+          Services = "batch.amazonaws.com"
+        }
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "instance_policy" {
+  name = "test_policy"
+  role = aws_iam_role.instance_role.id
+
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        sid = "AllowS3BucketAccess",
+        Effect = "Allow",
+        Actions = [
+          "s3:GetObject",
+          "s3:GetBucketLocation",
+          "s3:ListBucket",
+          "s3:HeadObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ],
+        Resources = ["*"]
+      }
+    ]
+  })
 }

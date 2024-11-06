@@ -8,7 +8,7 @@ locals {
                 image   = module.ecr[job].repository_url
                 environment = [
                     { 
-                        name = "MLFLOW_TRACKING_URI ", 
+                        name = "MLFLOW_TRACKING_URI", 
                         value = var.mlflow_tracking_uri
                     }
                 ]
