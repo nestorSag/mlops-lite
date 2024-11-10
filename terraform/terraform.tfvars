@@ -36,4 +36,9 @@ server_params = {
     name = "mlflow_server"
 }
 
+default_resource_requirements = [
+    { type = "VCPU", value = "2" },
+    { type = "MEMORY", value = "4096" }
+]
+
 s3_force_destroy = true
