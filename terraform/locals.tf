@@ -46,4 +46,5 @@ locals {
         ]
         }
     )
+    training_jobs_policy = fileexists("${path.root}/../policies/training-jobs-policy.json") ? file("${path.root}/../policies/training-jobs-policy.json") : local.default_training_jobs_policy
 }

@@ -1,8 +1,8 @@
 # MLOps control centre with Terraform + MLFlow + AWS
 
-This project allows you to manage the ML life cycle of your projects easily: train, track, deploy, monitor or retire your models with a single command. 
+This project allows you to manage the life cycle of your ML projects easily: train, track, deploy, monitor or retire your models with a single command. 
 
-It uses MLFlow to track and containerise models, AWS services to productionise them, and Terraform to keep track of state.
+It uses MLFlow to track and containerise models, AWS services to productionise them, and Terraform to keep track of the infrastructure.
 
 # Scope
 
@@ -75,13 +75,15 @@ The GPU line is optional, and you can remove it if your model does not use GPUs.
 
 ### Permissions for training containers
 
-You can specify custom IAM policies for your trining containers in `policies/training-jobs-policy.json`. If the file is not found, a default policy is used, which allows containers to
+You can specify custom IAM policies for your training containers in `policies/training-jobs-policy.json`. If the file is not found, a default policy is used, which allows containers to
 
 * Read and write to any S3 bucket
 
 * Read Parameter Store values with preffix `${var.project}/${var.region}/${var.env_name}`.  
 
 * Read Secrets Store values with preffix `${var.project}/${var.region}/${var.env_name}`.
+
+Note the same IAM policies are used for all ML projects.
 
 ### Passing environment variables to training containers
 
@@ -147,7 +149,7 @@ export TF_VAR_env_name=<my-env>
 
 3. Make sure to set appropriate values for Terraform variables, including reasonable server capacity parameters.
 
-4. As long as you have the necessary AWS permissions, you can provision the MLFlow server at this point.
+4. As long as you have the necessary AWS permissions, you can provision the MLFlow server at this point running `make mlflow-server`.
 
 4. Set up the server's VPN locally, and in GitHub Actions if applicable.
 
