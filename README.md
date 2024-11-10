@@ -1,4 +1,4 @@
-# MLOps control centre with Terraform + MLFlow + AWS
+# Lean MLOps control centre MLFlow + AWS + Terraform
 
 This project allows you to manage the life cycle of your ML projects easily: train, track, deploy, monitor or retire your models with a single command. 
 
