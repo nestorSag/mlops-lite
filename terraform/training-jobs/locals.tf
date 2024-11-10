@@ -17,7 +17,7 @@ locals {
                 logConfiguration = {
                     logDriver = "awslogs"
                     options = {
-                        awslogs-group         = "/aws/batch//training-jobs/${job}"
+                        awslogs-group         = "/aws/batch/training-jobs/${job}"
                         awslogs-region        = data.aws_region.current.name
                         awslogs-stream-prefix = "ec2"
                     }

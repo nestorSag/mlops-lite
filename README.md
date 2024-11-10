@@ -1,10 +1,12 @@
 # MLOps control centre with Terraform + MLFlow + AWS
 
-This project is intended to provide a lean MLOps control centre to train, track, deploy, monitor and retire ML models using MLFlow and Terraform on AWS, doing so from your local machine or through GitHub action workflows
+This project allows you to manage the ML life cycle of your projects easily: train, track, deploy, monitor or retire your models with a single command. 
+
+It uses MLFlow to track and containerise models, AWS services to productionise them, and Terraform to keep track of state.
 
 # Scope
 
-It should work out of the box for models that can be trained in a single EC2 instance (up to a few hundred GBs of RAM usage, depending on instance type). 
+It should work out of the box for models that can be trained in a single EC2 instance (up to a few hundred GBs of RAM usage, depending on instance type).  Note this project currently does not implement shadow deployments.
 
 # Requirements
 
@@ -16,7 +18,7 @@ It should work out of the box for models that can be trained in a single EC2 ins
 
 * AWS CLI
 
-* Docker (`sudo`-less)
+* Docker (without `sudo`)
 
 * Appropriate AWS permissions
 
@@ -43,7 +45,7 @@ Add a new subfolder in the `ml-projects` folder sticking to the following constr
 
 * Your `MLProject` code is responsible for fetching the data (e.g. from S3), training the model and logging it to MLFlow along with any other artifacts; you can assume `MLFLOW_TRACKING_URI` will point to the provisioned server automatically. See the example included. Note even jupyter notebooks are fine, as long as they log the model as a valid [MLFlow Model](https://mlflow.org/docs/latest/models.html); this is straightforward to do for most ML libraries in Python using existing `mlflow` methods.
 
-## Launching training jobs
+## Launching (re)training jobs
 
 run `make training-job project=<my-project>`, where `my-project` is a subfolder in `ml-projects`. This will use Terraform to
 
@@ -51,13 +53,11 @@ run `make training-job project=<my-project>`, where `my-project` is a subfolder 
 
 2. Create an ECR for your container
 
-3. Create AWS Batch compute environments, queue and task definitions if necessary.
+3. Create AWS Batch compute environments in Fargate, along with a queue and task definitions.
 
-Your training job will be launched on top of the above infrastructure. The end result is a new registered model in your MLFlow Registry (which your MLProject is assumed to handle internally), with name `<my-project>`. The MLFlow tracking URI is propagated automatically, do not hardcode it.
+Your training job will be launched on top of the above infrastructure. The end result is a new registered model in your MLFlow Registry (which your MLProject is assumed to handle internally, see [Integrating a new model](#integrating-a-new-model)), with name `<my-project>`. The MLFlow tracking URI is propagated automatically, do not hardcode it.
 
 ![Architecture diagram](other/images/training-jobs.png)
-
-You can configure Terraform variables with an email list that gets notified whenever a job fails or succeeds.
 
 ### Specifying computational requirements
 
@@ -71,7 +71,21 @@ You can add a `resource-requirements.json` file in `ml-projects/<my-project>` wi
 ]
 ```
 
-The GPU line is optional, and you can remove it if your model does not use GPUs. If this file is not found, default values are used. You can set your own defaults with Terraform's `default_resource_requirements` variable.
+The GPU line is optional, and you can remove it if your model does not use GPUs. If this file is not found, default values will be used. You must set your own defaults in Terraform variable `default_resource_requirements`.
+
+### Permissions for training containers
+
+You can specify custom IAM policies for your trining containers in `policies/training-jobs-policy.json`. If the file is not found, a default policy is used, which allows containers to
+
+* Read and write to any S3 bucket
+
+* Read Parameter Store values with preffix `${var.project}/${var.region}/${var.env_name}`.  
+
+* Read Secrets Store values with preffix `${var.project}/${var.region}/${var.env_name}`.
+
+### Passing environment variables to training containers
+
+`MLFLOW_TRACKING_URI` is the only environment variable passed to the batch job container when launched. If your container needs additional values, these will have to be fetched from the AWS Parameter Store or Secrets Store internally.
 
 ### Tearing down training job infrastructure
 

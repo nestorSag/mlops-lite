@@ -27,8 +27,12 @@ variable training_jobs {
     default = []
 }
 
-variable job_notification_list {
-    description = "List of email addresses to notify when a job completes or fails"
-    type    = list(string)
-    default = []
+variable vpc_id {
+    description = "VPC ID to use for the compute environment"
+    type    = string
+}
+
+variable training_jobs_policy {
+    description = "valid IAM policy JSON for training job containers"
+    type    = string
 }

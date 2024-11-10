@@ -16,6 +16,7 @@ build_mlflow_server ?= false
 # variables for training pipelines  and deployment infrastructure
 SSM_TRAINING_JOB_SET = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/training-job-set
 SSM_DEPLOYMENT_JOB_SET = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/deployment-job-set
+SSM_MLFLOW_SWITCH = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/build-mlflow-server
 update_action ?= add
 
 ## Display this help message
@@ -93,7 +94,7 @@ local-batch-inference:
 
 mlflow-server-switch:
 	aws ssm put-parameter \
-		--name "/$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/build-mlflow-server" \
+		--name "/${SSM_MLFLOW_SWITCH}" \
 		--description "This parameter holds the state that terraform uses to decide whether an MLFlow server is built" \
 		--value "$(build_mlflow_server)" \
 		--type "String" \
