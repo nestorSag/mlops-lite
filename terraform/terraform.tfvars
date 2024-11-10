@@ -25,6 +25,7 @@ db_params = {
     name              = "mlflowdb"
     username          = "mlflow_db_user"
     port              = "3306"
+    deletion_protection = false
 }
 
 server_params = {
@@ -40,4 +41,4 @@ default_resource_requirements = [
     { type = "MEMORY", value = "4096" }
 ]
 
-job_notification_list = []
+s3_force_destroy = true

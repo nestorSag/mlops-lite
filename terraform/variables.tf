@@ -28,6 +28,7 @@ variable "db_params" {
         username          = string
         port              = string
         family            = string
+        deletion_protection = bool
     })
 }
 
@@ -81,4 +82,9 @@ variable job_notification_list {
     description = "List of email addresses to notify when a job completes or fails"
     type    = list(string)
     default = []
+}
+
+variable "s3_force_destroy" {
+    description = "Force destroy S3 bucket even if it contains objects"
+    type        = bool
 }

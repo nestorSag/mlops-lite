@@ -10,7 +10,7 @@ provider "aws" {
 }
 
 module "mlflow_server" {
-    source = "./mlflow-server"
+    source = "git::https://github.com/nestorSag/terraform-aws-mlflow-server.git?ref=90ad1e8"
 
     db_params = var.db_params
     server_params = var.server_params
