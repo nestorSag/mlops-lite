@@ -1,6 +1,6 @@
 locals {
     job_definitions = {
-        for job in local.training_jobs : job => {
+        for job in var.training_jobs : job => {
             name           = job
 
             container_properties = jsonencode({
@@ -25,4 +25,13 @@ locals {
             })
         }
     }
+    project_shas = zipmap(
+        [
+            for job in var.training_jobs : job
+        ], 
+        [
+            for job in var.training_jobs : sha1(join("", [for f in fileset("${path.root}/../ml-projects/${job}", "**") : filesha1("${path.root}/../ml-projects/${job}/${f}")]))
+        ]
+        # local.input_list
+    )
 }

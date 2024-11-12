@@ -14,10 +14,9 @@ model ?= test-project/latest
 build_mlflow_server ?= false
 
 # variables for training pipelines  and deployment infrastructure
-SSM_TRAINING_JOB_SET = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/training-job-set
-SSM_DEPLOYMENT_JOB_SET = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/deployment-job-set
-SSM_MLFLOW_SWITCH = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/build-mlflow-server
-update_action ?= add
+SSM_TRAINING_JOB_SET = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/training_jobs
+SSM_DEPLOYMENT_JOB_SET = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/deployment_jobs
+action ?= add
 
 ## Display this help message
 help:
@@ -92,25 +91,22 @@ local-batch-inference:
 		--output-path $(inference_output)
 	echo "Inference completed. Input : $(inference_input), Output : $(inference_output)"
 
-mlflow-server-switch:
-	aws ssm put-parameter \
-		--name "/${SSM_MLFLOW_SWITCH}" \
-		--description "This parameter holds the state that terraform uses to decide whether an MLFlow server is built" \
-		--value "$(build_mlflow_server)" \
-		--type "String" \
-		--overwrite
+# initialises SSM parameters on which Terraform configuration depends
+ssm_sets:
+	python utils/init_ssm_set.py \
+		--param=$(SSM_TRAINING_JOB_SET)
+	python utils/init_ssm_set.py \
+		--param=$(SSM_DEPLOYMENT_JOB_SET)
 
-tf-apply:
+tf-apply: ssm_sets
 	cd ./terraform && terraform init \
 		-backend-config="bucket=$${TF_VAR_state_bucket_name}" \
 		-backend-config="key=$${TF_VAR_project}/$${TF_VAR_env_name}/tf.state" \
 		-backend-config="region=$${TF_VAR_region}" \
 	&& terraform apply -var-file=terraform.tfvars
 
-# this line sets a default value for the build_mlflow_server variable inside the rule's scope
-mlflow-server: build_mlflow_server=true
 ## Provisions the MLflow server infrastructure
-mlflow-server: mlflow-server-switch tf-apply
+mlflow-server: tf-apply
 
 ## Tears down the MLflow server infrastructure
 mlflow-server-rm: mlflow-server-switch tf-apply
@@ -121,29 +117,29 @@ update-ssm-set:
         python utils/update_ssm_set.py \
 		--param=$(ssm_param) \
 		--elem=$(project) \
-		--action=$(update_action); \
+		--action=$(action); \
     else \
 		echo "Project folder $(project) not found. Please ensure that the project folder exists in ml-projects/."; \
         exit 1; \
     fi
-	make tf-apply
 
 # Sets default values for training-job rule
-training-job: ssm_param=$(SSM_TRAINING_JOB_SET) update_action=add
+training-job: ssm_param=$(SSM_TRAINING_JOB_SET) 
+training-job: action=add
 ## Provisions the training job pipeline infrastructure and launches it. Example use: make training-job project=test-project.
-training-job: update-ssm-set tf-apply
+training-job: update-ssm-set  tf-apply
 
 # Sets default values for training-job-rm rule
-training-job-rm: ssm_param=$(SSM_TRAINING_JOB_SET) update_action=remove
+training-job-rm: ssm_param=$(SSM_TRAINING_JOB_SET) action=remove
 ## Tears down the training job pipeline. Example use: make training-job-rm project=test-project.
 training-job-rm: update-ssm-set tf-apply
 
 # Sets default values for deployment-job rule
-deployment-job: ssm_param=$(SSM_DEPLOYMENT_JOB_SET) update_action=add
+deployment-job: ssm_param=$(SSM_DEPLOYMENT_JOB_SET) action=add
 ## Provisions model deployment infrastructure. Example use: make deployment-job project=test-project.
 deployment-job: update-ssm-set tf-apply
 
 # Sets default values for deployment-job-rm rule
-deployment-job-rm: ssm_param=$(SSM_DEPLOYMENT_JOB_SET) update_action=remove
+deployment-job-rm: ssm_param=$(SSM_DEPLOYMENT_JOB_SET) action=remove
 ## Tears down model deployment infrastructure. Example use: make deployment-job-rm project=test-project.
 deployment-job-rm: update-ssm-set tf-apply

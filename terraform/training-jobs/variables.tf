@@ -36,3 +36,8 @@ variable training_jobs_policy {
     description = "valid IAM policy JSON for training job containers"
     type    = string
 }
+
+variable max_vcpus {
+    description = "Maximum number of vCPUs to use for training jobs"
+    type    = number
+}

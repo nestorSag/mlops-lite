@@ -4,8 +4,9 @@ locals {
         project     = var.project
         terraform   = "true"
     }
-
     param_namespace = "${var.project}/${var.region}/${var.env_name}"
+    # try to fetch jobs as comma separated string from ssm parameter store. If it fails, set it to an empty list
+    training_jobs = [for job in split(",", regex("^\\[(.*)\\]$", nonsensitive(data.aws_ssm_parameter.training_jobs.value))[0]) : job if length(job) > 0]
     default_training_jobs_policy = jsonencode(
             {
         Version = "2012-10-17"

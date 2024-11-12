@@ -1,7 +1,7 @@
 
 
 module "ecr" {
-  for_each = var.training_jobs
+  for_each = toset(var.training_jobs)
   source = "git::github.com/terraform-aws-modules/terraform-aws-ecr?ref=841b3c7"
 
   repository_name = each.key
@@ -29,7 +29,7 @@ module "ecr" {
 }
 
 resource "null_resource" "bundle_build_and_push_mlproject_image" {
-  for_each = local.training_jobs
+  for_each = toset(var.training_jobs)
   provisioner "local-exec" {
     command = <<-EOT
     cd ${path.root}/..
@@ -41,15 +41,15 @@ resource "null_resource" "bundle_build_and_push_mlproject_image" {
     aws ecr get-login-password --region ${data.aws_region.current.name} | docker login --username AWS --password-stdin ${module.ecr[each.key].repository_url}
     docker build \
       --platform=linux/amd64 \
-      -t ${module.ecr[each.key].repository_url}:${self.project_sha} \
+      -t ${module.ecr[each.key].repository_url}:${local.project_shas[each.key]} \
       "${path.module}/docker"
-    docker push ${module.ecr[each.key].repository_url}:${self.project_sha}
+    docker push ${module.ecr[each.key].repository_url}:${local.project_shas[each.key]}
     EOT
   }
 
   triggers = {
     # Rebuild the image if any of the files in the mlproject directory change
-    project_sha = sha1(join("", [for f in fileset("${path.root}/../each.key", ["**"]) : filesha1("${path.root}/../${each.key}/${f}")]))
+    project_sha = local.project_shas[each.key]
   }
 }
 
@@ -177,17 +177,19 @@ module "batch" {
 
   create_service_iam_role = false
   create_instance_iam_role = false
-  
+
   compute_environments = {
     fargate_compute_env = {
-      name_prefix = "fargate"
+      name_prefix = "fargate_compute_env"
+
+      service_role       = aws_iam_role.service_role.arn
+      instance_role      = aws_iam_role.instance_role.arn
 
       compute_resources = {
         type      = "FARGATE"
+        max_vcpus = var.max_vcpus
 
         subnets            = var.compute_env_subnet_ids
-        service_role       = aws_iam_role.service_role.arn
-        instance_role      = aws_iam_role.instance_role.arn
         security_group_ids = [module.batch_security_group.security_group_id]
 
       }

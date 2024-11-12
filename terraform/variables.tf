@@ -1,55 +1,10 @@
-variable "vpc_params" {
-  description = "VPC configuration parameters"
-  type = object({
-    cidr               = string
-    private_subnets    = list(string)
-    public_subnets     = list(string)
-    db_subnets         = list(string)
-    azs                = list(string)
-  })
-}
-
-variable "vpn_params" { 
-    description = "VPN configuration parameters"
-    type = object({
-        cidr = string
-        clients = list(string) # This list must always start with a 'root' element.
-    })
-}
-
-variable "db_params" {
-    description = "Database configuration parameters"
-    type = object({
-        engine            = string
-        engine_version    = string
-        instance_class    = string
-        allocated_storage = number
-        name              = string
-        username          = string
-        port              = string
-        family            = string
-        deletion_protection = bool
-    })
-}
-
-variable "server_params" {
-    description = "MLflow server configuration parameters"
-    type = object({
-        cpu = number
-        memory = number
-        autoscaling_max_capacity = number
-        port = number
-        name = string
-    })
-}
-
 variable "region" {
   description = "AWS region to use for deployment"
   type        = string
 }
 
 variable "env_name" {
-    description = "Environment name"
+    description = "Environment name, e.g. prod"
     type        = string
 }
 
@@ -62,6 +17,101 @@ variable "state_bucket_name" {
     description = "Name of the S3 bucket to use for storing Terraform state. This variable should be set as an environmental variable with the name 'TF_VAR_state_bucket_name'."
 }
 
+############### MLFLOW SERVER VARIABLES ################
+
+variable "vpc_cidr_block" {
+    description = "VPC CIDR block"
+    type        = string
+}
+
+variable "vpc_private_subnets" {
+    description = "VPC private subnets"
+    type        = list(string)
+}
+
+variable "vpc_public_subnets" {
+    description = "VPC public subnets"
+    type        = list(string)
+}
+
+variable "vpc_db_subnets" {
+    description = "VPC database subnets"
+    type        = list(string)
+}
+
+variable "vpn_cidr_block" {
+    description = "VPN CIDR block"
+    type        = string
+}
+
+variable "vpn_clients" {
+    description = "VPN client names (one per .ovpn file)"
+    type        = list(string)
+}
+
+variable "db_instance_class" {
+    description = "Database instance class"
+    type        = string
+}
+
+variable "db_allocated_storage" {
+    description = "Database allocated storage"
+    type        = number
+}
+
+variable "db_name" {
+    description = "Database name"
+    type        = string
+}
+
+variable "db_username" {
+    description = "Database username"
+    type        = string
+}
+
+variable "db_port" {
+    description = "Database port"
+    type        = string
+}
+
+variable "db_deletion_protection" {
+    description = "Database deletion protection"
+    type        = bool
+}
+
+variable "s3_force_destroy" {
+    description = "Allows Terraform to destroy the MLFlow artifact bucket even if it contains objects"
+    type        = bool
+}
+
+variable "server_cpu" {
+    description = "MLflow server CPU"
+    type        = number
+}
+
+variable "server_memory" {
+    description = "MLflow server memory"
+    type        = number
+}
+
+variable "server_autoscaling_max_capacity" {
+    description = "MLflow server autoscaling max capacity"
+    type        = number
+}
+
+variable "server_port" {
+    description = "MLflow server port"
+    type        = number
+}
+
+variable "server_name" {
+    description = "MLflow server name"
+    type        = string
+}
+
+
+############### TRAINING JOBS VARIABLES ################
+
 variable default_resource_requirements {
     type    = list(object({
         type  = string
@@ -73,18 +123,7 @@ variable default_resource_requirements {
     # ]
 }
 
-variable compute_env_subnet_ids {
-    type    = list(string)
-    default = []
-}
-
-variable job_notification_list {
-    description = "List of email addresses to notify when a job completes or fails"
-    type    = list(string)
-    default = []
-}
-
-variable "s3_force_destroy" {
-    description = "Force destroy S3 bucket even if it contains objects"
-    type        = bool
+variable max_vcpus {
+    description = "Maximum number of vCPUs to use for training jobs"
+    type        = number
 }

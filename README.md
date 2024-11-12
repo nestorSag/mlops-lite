@@ -145,16 +145,23 @@ export TF_VAR_env_name=<my-env>
 
 `TF_VAR_state_bucket_name` holds the S3 bucket with the global Terraform state. This is needed for GitHub Actions to work, and also if multiple people can launch jobs. In the latter case, it is recommended to set a Terraform state lock table as well.
 
-2. Make sure your AWS CLI is configured appropriately
+2. Set up a Python virtual environment and install the `requirements.txt` file
 
-3. Make sure to set appropriate values for Terraform variables, including reasonable server capacity parameters.
+3. Make sure your AWS CLI is configured appropriately
 
-4. As long as you have the necessary AWS permissions, you can provision the MLFlow server at this point running `make mlflow-server`.
+4. Create a file `terraform/terraform.tfvvars` and set appropriate values for all Terraform variables.
 
-4. Set up the server's VPN locally, and in GitHub Actions if applicable.
+5. As long as you have the necessary AWS permissions, you can provision the MLFlow server at this point running `make mlflow-server`.
 
-5. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to try provisioning training and deployment infrastructure.
+6. Set up the server's VPN locally, and in GitHub Actions if applicable.
+
+7. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to try provisioning training and deployment infrastructure.
 
 ⚠️ Keep in mind this project requires broad permissions across multiple services such as ECS, S3, VPC, SNS, RDS, SageMaker, among others.
 
 ⚠️ This project uses billable services.
+
+
+# Notes
+
+1. At this time, The support for the MLFlow server's metadata DB is limited to `MySQL` 8.0
