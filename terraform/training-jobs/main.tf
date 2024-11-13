@@ -213,6 +213,9 @@ resource "aws_iam_role_policy" "instance_policy" {
   policy = var.training_jobs_policy
 }
 
+resource "aws_cloudwatch_log_group" "training_jobs_log_group" {
+  name = local.log_group_name
+}
 
 module "batch" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-batch?ref=c478369"
