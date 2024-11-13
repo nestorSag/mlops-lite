@@ -43,12 +43,14 @@ module "mlflow_server" {
 
 module "training_jobs" {
 
+  count = length(local.training_jobs) > 0 ? 1 : 0
+
   depends_on = [module.mlflow_server]
   
   source = "./training-jobs"
   
   default_resource_requirements = var.default_resource_requirements
-  compute_env_subnet_ids = var.vpc_private_subnets
+  compute_env_subnet_ids = module.mlflow_server.server_subnet_ids
   
   mlflow_tracking_uri = module.mlflow_server.mlflow_tracking_uri
   vpc_id = module.mlflow_server.vpc_id

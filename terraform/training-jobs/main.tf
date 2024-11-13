@@ -35,14 +35,15 @@ resource "null_resource" "bundle_build_and_push_mlproject_image" {
     cd ${path.root}/..
     mkdir -p tmp
     cp Makefile tmp/
-	cp -r ./ml-projects/${each.key} tmp/${each.key}
-	cp ./other/docker/mlproject-template/Dockerfile tmp/Dockerfile
+    cp -r ./ml-projects/${each.key} ./tmp/${each.key}
+    cp ./terraform/training-jobs/Dockerfile ./tmp
 
     aws ecr get-login-password --region ${data.aws_region.current.name} | docker login --username AWS --password-stdin ${module.ecr[each.key].repository_url}
     docker build \
       --platform=linux/amd64 \
       -t ${module.ecr[each.key].repository_url}:${local.project_shas[each.key]} \
-      "${path.module}/docker"
+      --build-arg PROJECT=${each.key} \
+      "./tmp"
     docker push ${module.ecr[each.key].repository_url}:${local.project_shas[each.key]}
     EOT
   }
@@ -72,6 +73,8 @@ module "batch_security_group" {
   ]
 }
 
+
+
 resource "aws_iam_role" "service_role" {
   name = "service_role"
 
@@ -81,7 +84,15 @@ resource "aws_iam_role" "service_role" {
       {
         Action = "sts:AssumeRole"
         Effect = "Allow"
-        Sid    = "Allow AWS Batch to assume this role"
+        Sid    = "AllowEC2Service"
+        Principal = {
+          Service = "ec2.amazonaws.com",
+        }
+      },
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = "AllowAWSBatchService"
         Principal = {
           Service = "batch.amazonaws.com"
         }
@@ -89,61 +100,75 @@ resource "aws_iam_role" "service_role" {
       {
         Action = "sts:AssumeRole"
         Effect = "Allow"
-        Sid    = "Allow ECS tasks to assume this role"
+        Sid    = "AllowECS"
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
         }
       },
-    ]
-  })
-}
-
-
-resource "aws_iam_role_policy" "service_policy" {
-  name = "test_policy"
-  role = aws_iam_role.service_role.id
-
-  # Terraform's "jsonencode" function converts a
-  # Terraform expression result to valid JSON syntax.
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
       {
-        sid = "AllowS3BucketAccess",
-        Effect = "Allow",
-        Actions = [
-          "s3:GetObject",
-          "s3:GetBucketLocation",
-          "s3:ListBucket",
-          "s3:HeadObject",
-          "s3:PutObject",
-          "s3:DeleteObject"
-        ],
-        Resources = ["*"]
-      },
-      {
-        Effect = "Allow",
-        Actions = [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage",
-        ],
-        Resources = [for r in module.ecr : r.repository_arn]
-      },
-      {
-        Effect = "Allow",
-        Actions = [
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "logs:CreateLogGroup"
-        ],
-        Resources = ["*"]
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = "AllowECSService"
+        Principal = {
+          Service = "ecs.amazonaws.com"
+        }
       }
-
     ]
   })
 }
+
+resource "aws_iam_role_policy_attachment" "service_policy_attachment" {
+  role       = aws_iam_role.service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole"
+}
+
+
+# resource "aws_iam_role_policy" "service_policy" {
+#   name = "test_policy"
+#   role = aws_iam_role.service_role.id
+
+#   # Terraform's "jsonencode" function converts a
+#   # Terraform expression result to valid JSON syntax.
+#   policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [
+#       {
+#         Sid = "AllowS3BucketAccess",
+#         Effect = "Allow",
+#         Action = [
+#           "s3:GetObject",
+#           "s3:GetBucketLocation",
+#           "s3:ListBucket",
+#           "s3:HeadObject",
+#           "s3:PutObject",
+#           "s3:DeleteObject"
+#         ],
+#         Resource = ["*"]
+#       },
+#       {
+#         Effect = "Allow",
+#         Action = [
+#           "ecr:GetAuthorizationToken",
+#           "ecr:BatchCheckLayerAvailability",
+#           "ecr:GetDownloadUrlForLayer",
+#           "ecr:BatchGetImage",
+#         ],
+#         Resource = [for r in module.ecr : r.repository_arn]
+#       },
+#       {
+#         Effect = "Allow",
+#         Action = [
+#           "logs:CreateLogStream",
+#           "logs:PutLogEvents",
+#           "logs:CreateLogGroup",
+#           "logs:DescribeLogStreams",
+#           "logs:DescribeLogGroups"
+#         ],
+#         Resource = ["*"]
+#       }
+#     ]
+#   })
+# }
 
 
 resource "aws_iam_role" "instance_role" {
@@ -155,12 +180,27 @@ resource "aws_iam_role" "instance_role" {
       {
         Action = "sts:AssumeRole"
         Effect = "Allow"
-        Sid    = "Allow EC2 instances to assume this role"
+        Sid    = "AllowEC2Service"
         Principal = {
           Service = "ec2.amazonaws.com",
-          Services = "batch.amazonaws.com"
         }
       },
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = "AllowBatchService"
+        Principal = {
+          Service = "batch.amazonaws.com"
+        }
+      },
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = "AllowECSTasks"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
     ]
   })
 }
@@ -198,7 +238,7 @@ module "batch" {
 
   # Job queus and scheduling policies
   job_queues = {
-    low_priority = {
+    default = {
       name     = "training-jobs"
       state    = "ENABLED"
       priority = 1

@@ -11,9 +11,8 @@ locals {
                         value = var.mlflow_tracking_uri
                     }
                 ]
-                resourceRequirements = [
-                    fileexists("${path.root}/../ml-projects/${job}/resource-requirements.json") ? jsondecode(file("${path.root}/../ml-projects/${job}/resource-requirements.json")) : var.default_resource_requirements
-                ] # custom resource requirements can be defined in ml-projects/${job}/resource-requirements.json
+                # custom resource requirements can be defined in ml-projects/${job}/resource-requirements.json
+                resourceRequirements = fileexists("${path.root}/../ml-projects/${job}/resource-requirements.json") ? jsondecode(file("${path.root}/../ml-projects/${job}/resource-requirements.json")) : var.default_resource_requirements
                 logConfiguration = {
                     logDriver = "awslogs"
                     options = {
@@ -32,6 +31,6 @@ locals {
         [
             for job in var.training_jobs : sha1(join("", [for f in fileset("${path.root}/../ml-projects/${job}", "**") : filesha1("${path.root}/../ml-projects/${job}/${f}")]))
         ]
-        # local.input_list
+        # map of the form { job_name -> sha1_hash_of_files_in_mlproject_directory }
     )
 }

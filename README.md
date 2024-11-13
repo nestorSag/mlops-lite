@@ -26,7 +26,7 @@ It should work out of the box for models that can be trained in a single EC2 ins
 
 ## MLFlow provisioning
 
-This project uses [this Terraform module](https://github.com/nestorSag/terraform-aws-mlflow-server) to provision a production MLFlow server. Run `make mlflow-server` to start the process, and `make mlflow-server-rm` to tear it down. The server architecture is shown below.
+This project uses [this Terraform module](https://github.com/nestorSag/terraform-aws-mlflow-server) to provision a production MLFlow server. Run `make mlflow-server` to start the process. The server architecture is shown below.
 
 ![Architecture diagram](other/images/mlflow-server.png)
 

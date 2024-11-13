@@ -12,9 +12,9 @@ locals {
         Version = "2012-10-17"
         Statement = [
             {
-            sid = "AllowS3BucketAccess",
+            Sid = "AllowS3BucketAccess",
             Effect = "Allow",
-            Actions = [
+            Action = [
                 "s3:GetObject",
                 "s3:GetBucketLocation",
                 "s3:ListBucket",
@@ -22,27 +22,27 @@ locals {
                 "s3:PutObject",
                 "s3:DeleteObject"
             ],
-            Resources = ["*"]
+            Resource = ["*"]
             },
             # allow access to secrets
             {
             Effect = "Allow",
-            Actions = [
+            Action = [
                 "secretsmanager:GetSecretValue",
                 "secretsmanager:DescribeSecret",
                 "secretsmanager:ListSecrets"
             ],
-            Resources = ["arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${local.param_namespace}/*"]
+            Resource = ["arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${local.param_namespace}/*"]
             },
             # allow access to parameter store
             {
             Effect = "Allow",
-            Actions = [
+            Action = [
                 "ssm:GetParameter",
                 "ssm:GetParameters",
                 "ssm:GetParametersByPath"
             ],
-            Resources = ["arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/${local.param_namespace}/*"]
+            Resource = ["arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/${local.param_namespace}/*"]
             }
         ]
         }

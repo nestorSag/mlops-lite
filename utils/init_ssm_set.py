@@ -1,5 +1,5 @@
 """
-This script is used to update a set stored in SSM. The set is stored as a comma-separated string, where elements are sorted.
+This script is used to initialised a set stored in SSM. The set is stored as a comma-separated string, where elements are sorted.
 """
 import argparse
 import logging

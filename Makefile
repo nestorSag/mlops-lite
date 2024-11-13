@@ -108,8 +108,9 @@ tf-apply: ssm_sets
 ## Provisions the MLflow server infrastructure
 mlflow-server: tf-apply
 
-## Tears down the MLflow server infrastructure
-mlflow-server-rm: mlflow-server-switch tf-apply
+## Tears down Terraform infrastructure
+teardown: 
+	cd ./terraform && terraform destroy -var-file=terraform.tfvars
 
 # Checks that the project folder exists, then updates the SSM parameter set and applies the Terraform configuration
 update-ssm-set:
