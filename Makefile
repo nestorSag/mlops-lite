@@ -135,16 +135,19 @@ training-job: update-ssm-set  tf-apply
 
 
 # Sets default values for training-job-rm rule
-training-job-rm: ssm_param=$(SSM_TRAINING_JOB_SET) action=remove
+training-job-rm: ssm_param=$(SSM_TRAINING_JOB_SET)
+training-job-rm: action=remove
 ## Tears down the training job pipeline. Example use: make training-job-rm project=test-project.
 training-job-rm: update-ssm-set tf-apply
 
 # Sets default values for deployment-job rule
-deployment-job: ssm_param=$(SSM_DEPLOYMENT_JOB_SET) action=add
+deployment-job: ssm_param=$(SSM_DEPLOYMENT_JOB_SET)
+deployment-job: action=add
 ## Provisions model deployment infrastructure. Example use: make deployment-job project=test-project.
 deployment-job: update-ssm-set tf-apply
 
 # Sets default values for deployment-job-rm rule
-deployment-job-rm: ssm_param=$(SSM_DEPLOYMENT_JOB_SET) action=remove
+deployment-job-rm: ssm_param=$(SSM_DEPLOYMENT_JOB_SET)
+deployment-job-rm: action=remove
 ## Tears down model deployment infrastructure. Example use: make deployment-job-rm project=test-project.
 deployment-job-rm: update-ssm-set tf-apply
