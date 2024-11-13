@@ -24,6 +24,10 @@ locals {
                     { 
                         name = "MLFLOW_TRACKING_URI", 
                         value = var.mlflow_tracking_uri
+                    },
+                    { 
+                        name = "MLFLOW_EXPERIMENT_NAME", 
+                        value = job
                     }
                 ]
                 # custom resource requirements can be defined in ml-projects/${job}/resource-requirements.json

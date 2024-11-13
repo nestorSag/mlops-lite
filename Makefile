@@ -65,8 +65,7 @@ help:
 ## Re-runs an MLFlow project locally and optionally creates a new version of the model in the MLFlow registry.
 ## Example usage: make local-training project=test-project.
 local-training:
-	mlflow run ml-projects/$(project) \
-		--experiment-name $(project)
+	MLFLOW_EXPERIMENT_NAME=$(project) mlflow run ml-projects/$(project)
 
 ## Deploys the model to a local endpoint in port 5050 using MLFLow. This command is blocking.
 ## Example usage: make local-deployment model=test-project.
@@ -130,7 +129,7 @@ training-job: action=add
 ## Provisions the training job pipeline infrastructure and submits it. Example use: make training-job project=test-project.
 training-job: update-ssm-set  tf-apply
 	aws batch submit-job \
-	--job-name "$(project)-$${date +%Y-%m-%d-%H-%M-%S}" \
+	--job-name "$(project)-$$(date +%Y-%m-%d-%H-%M-%S)" \
 	--job-queue training_jobs_queue \
 	--job-definition "training_job_$(project)"
 
