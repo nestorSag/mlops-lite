@@ -127,8 +127,13 @@ update-ssm-set:
 # Sets default values for training-job rule
 training-job: ssm_param=$(SSM_TRAINING_JOB_SET) 
 training-job: action=add
-## Provisions the training job pipeline infrastructure and launches it. Example use: make training-job project=test-project.
+## Provisions the training job pipeline infrastructure and submits it. Example use: make training-job project=test-project.
 training-job: update-ssm-set  tf-apply
+	aws batch submit-job \
+	--job-name "$(project)-$${date +%Y-%m-%d-%H-%M-%S}" \
+	--job-queue training_jobs_queue \
+	--job-definition "training_job_$(project)"
+
 
 # Sets default values for training-job-rm rule
 training-job-rm: ssm_param=$(SSM_TRAINING_JOB_SET) action=remove
