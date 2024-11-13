@@ -1,10 +1,15 @@
 locals {
     job_definitions = {
         for job in var.training_jobs : job => {
-            name           = job
+            name           = "training_job_${job}"
+
+            platform_capabilities = ["FARGATE"]
 
             container_properties = jsonencode({
                 image   = module.ecr[job].repository_url
+                fargatePlatformConfiguration = {
+                    platformVersion = "LATEST"
+                },
                 environment = [
                     { 
                         name = "MLFLOW_TRACKING_URI", 
@@ -21,6 +26,8 @@ locals {
                         awslogs-stream-prefix = "ec2"
                     }
                 }
+                jobRoleArn = aws_iam_role.instance_role.arn
+                executionRoleArn = aws_iam_role.task_execution_role.arn
             })
         }
     }

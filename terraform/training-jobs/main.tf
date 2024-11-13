@@ -123,52 +123,54 @@ resource "aws_iam_role_policy_attachment" "service_policy_attachment" {
 }
 
 
-# resource "aws_iam_role_policy" "service_policy" {
-#   name = "test_policy"
-#   role = aws_iam_role.service_role.id
 
-#   # Terraform's "jsonencode" function converts a
-#   # Terraform expression result to valid JSON syntax.
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Sid = "AllowS3BucketAccess",
-#         Effect = "Allow",
-#         Action = [
-#           "s3:GetObject",
-#           "s3:GetBucketLocation",
-#           "s3:ListBucket",
-#           "s3:HeadObject",
-#           "s3:PutObject",
-#           "s3:DeleteObject"
-#         ],
-#         Resource = ["*"]
-#       },
-#       {
-#         Effect = "Allow",
-#         Action = [
-#           "ecr:GetAuthorizationToken",
-#           "ecr:BatchCheckLayerAvailability",
-#           "ecr:GetDownloadUrlForLayer",
-#           "ecr:BatchGetImage",
-#         ],
-#         Resource = [for r in module.ecr : r.repository_arn]
-#       },
-#       {
-#         Effect = "Allow",
-#         Action = [
-#           "logs:CreateLogStream",
-#           "logs:PutLogEvents",
-#           "logs:CreateLogGroup",
-#           "logs:DescribeLogStreams",
-#           "logs:DescribeLogGroups"
-#         ],
-#         Resource = ["*"]
-#       }
-#     ]
-#   })
-# }
+resource "aws_iam_role" "task_execution_role" {
+  name = "task_execution_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = "AllowEC2Service"
+        Principal = {
+          Service = "ec2.amazonaws.com",
+        }
+      },
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = "AllowAWSBatchService"
+        Principal = {
+          Service = "batch.amazonaws.com"
+        }
+      },
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = "AllowECS"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      },
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = "AllowECSService"
+        Principal = {
+          Service = "ecs.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "task_execution_policy_attachment" {
+  role       = aws_iam_role.task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 
 
 resource "aws_iam_role" "instance_role" {
@@ -238,10 +240,11 @@ module "batch" {
 
   # Job queus and scheduling policies
   job_queues = {
-    default = {
-      name     = "training-jobs"
+    training_jobs_queue = {
+      name     = "training_jobs_queue"
       state    = "ENABLED"
       priority = 1
+      create_scheduling_policy = false
 
       compute_environments = ["fargate_compute_env"]
 

@@ -59,4 +59,5 @@ module "training_jobs" {
   training_jobs_policy = local.training_jobs_policy
 
   max_vcpus = var.max_vcpus
+
 }
