@@ -8,14 +8,14 @@ register ?= True
 inference_input ?= ./other/input-examples/predict_example.csv
 inference_output ?= ./predict_output.csv
 input_type ?= csv
-model ?= test-project/latest
+version ?= latest
 
 # variables for MLFlow server
 build_mlflow_server ?= false
 
-# variables for training pipelines  and deployment infrastructure
+# variables in the Parameter Store to track  training pipelines and deployment infrastructure
 SSM_TRAINING_JOB_SET = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/training_jobs
-SSM_DEPLOYMENT_JOB_SET = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/deployment_jobs
+SSM_DEPLOYMENT_JOBS_JSON = /$${TF_VAR_project}/$${TF_VAR_region}/$${TF_VAR_env_name}/deployment_jobs
 action ?= add
 
 ## Display this help message
@@ -68,11 +68,11 @@ local-training:
 	MLFLOW_EXPERIMENT_NAME=$(project) mlflow run ml-projects/$(project)
 
 ## Deploys the model to a local endpoint in port 5050 using MLFLow. This command is blocking.
-## Example usage: make local-deployment model=test-project.
+## Example usage: make local-deployment project=test-project version=1.
 local-deployment:
 	mlflow models serve \
 		--env-manager=$(DEFAULT_ENV_MANAGER) \
-		-m models:/$(model) \
+		-m models:/$(project)/$(version) \
 		-p 5050
 
 ## Runs a test request to the local endpoint and returns the result.
@@ -85,19 +85,20 @@ local-batch-inference:
 	mlflow models predict \
 		--env-manager=$(DEFAULT_ENV_MANAGER) \
 		-t $(input_type) \
-		-m models:/$(model) \
+		-m models:/$(project)/$(version) \
 		--input-path $(inference_input) \
 		--output-path $(inference_output)
 	echo "Inference completed. Input : $(inference_input), Output : $(inference_output)"
 
 # initialises SSM parameters on which Terraform configuration depends
-ssm_sets:
-	python utils/init_ssm_set.py \
+ssm_params:
+	python utils/init_ssm_param.py \
 		--param=$(SSM_TRAINING_JOB_SET)
-	python utils/init_ssm_set.py \
-		--param=$(SSM_DEPLOYMENT_JOB_SET)
+	python utils/init_ssm_param.py \
+		--param=$(SSM_DEPLOYMENT_JOBS_JSON) \
+		--is_json
 
-tf-apply: ssm_sets
+tf-apply: ssm_params
 	cd ./terraform && terraform init \
 		-backend-config="bucket=$${TF_VAR_state_bucket_name}" \
 		-backend-config="key=$${TF_VAR_project}/$${TF_VAR_env_name}/tf.state" \
@@ -123,31 +124,40 @@ update-ssm-set:
         exit 1; \
     fi
 
-# Sets default values for training-job rule
-training-job: ssm_param=$(SSM_TRAINING_JOB_SET) 
-training-job: action=add
-## Provisions the training job pipeline infrastructure and submits it. Example use: make training-job project=test-project.
-training-job: update-ssm-set  tf-apply
+# Checks that the project folder exists, then updates the SSM JSON string and applies the Terraform configuration
+update-ssm-json:
+	if [ -d ml-projects/$(project) ]; then \
+        python utils/update_ssm_set.py \
+		--param=$(ssm_param) \
+		--key=$(project) \
+		--value=$(version) \
+		--action=$(action); \
+    else \
+		echo "Project folder $(project) not found. Please ensure that the project folder exists in ml-projects/."; \
+        exit 1; \
+    fi
+
+## Provisions the training job pipeline. Example use: make training-job project=test-project.
+training-job:
+	make update-ssm-set ssm_param=$(SSM_TRAINING_JOB_SET) action=add project=$(project)
+	make tf-apply
 	aws batch submit-job \
 	--job-name "$(project)-$$(date +%Y-%m-%d-%H-%M-%S)" \
 	--job-queue training_jobs_queue \
 	--job-definition "training_job_$(project)"
 
 
-# Sets default values for training-job-rm rule
-training-job-rm: ssm_param=$(SSM_TRAINING_JOB_SET)
-training-job-rm: action=remove
 ## Tears down the training job pipeline. Example use: make training-job-rm project=test-project.
-training-job-rm: update-ssm-set tf-apply
+training-job-rm: 
+	make update-ssm-set ssm_param=$(SSM_TRAINING_JOB_SET) action=remove project=$(project)
+	make tf-apply
 
-# Sets default values for deployment-job rule
-deployment-job: ssm_param=$(SSM_DEPLOYMENT_JOB_SET)
-deployment-job: action=add
-## Provisions model deployment infrastructure. Example use: make deployment-job project=test-project.
-deployment-job: update-ssm-set tf-apply
+## Provisions model deployment infrastructure. Example use: make deployment-job project=test-project version=latest.
+deployment-job:
+	make update-ssm-json action=add ssm_param=$(SSM_DEPLOYMENT_JOBS_JSON) key=$(project) value=$(version)
+	make tf-apply
 
-# Sets default values for deployment-job-rm rule
-deployment-job-rm: ssm_param=$(SSM_DEPLOYMENT_JOB_SET)
-deployment-job-rm: action=remove
 ## Tears down model deployment infrastructure. Example use: make deployment-job-rm project=test-project.
-deployment-job-rm: update-ssm-set tf-apply
+deployment-job-rm: 
+	make update-ssm-json action=remove ssm_param=$(SSM_DEPLOYMENT_JOBS_JSON) key=$(project)
+	make tf-apply

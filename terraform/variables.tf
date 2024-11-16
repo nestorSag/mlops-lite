@@ -112,17 +112,6 @@ variable "server_name" {
 
 ############### TRAINING JOBS VARIABLES ################
 
-variable default_resource_requirements {
-    type    = list(object({
-        type  = string
-        value = string
-    }))
-    # default = [
-    #     { type = "VCPU", value = "1" },
-    #     { type = "MEMORY", value = "1024" }
-    # ]
-}
-
 variable max_vcpus {
     description = "Maximum number of vCPUs to use for training jobs"
     type        = number

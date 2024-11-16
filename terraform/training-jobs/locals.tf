@@ -31,7 +31,7 @@ locals {
                     }
                 ]
                 # custom resource requirements can be defined in ml-projects/${job}/resource-requirements.json
-                resourceRequirements = fileexists("${path.root}/../ml-projects/${job}/resource-requirements.json") ? jsondecode(file("${path.root}/../ml-projects/${job}/resource-requirements.json")) : var.default_resource_requirements
+                resourceRequirements = fileexists("${path.root}/../ml-projects/${job}/resource-requirements.json") ? jsondecode(file("${path.root}/../ml-projects/${job}/resource-requirements.json")) : var.default_training_resource_requirements
                 logConfiguration = {
                     logDriver = "awslogs"
                     options = {
