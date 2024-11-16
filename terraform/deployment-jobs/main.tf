@@ -85,32 +85,7 @@ resource "aws_iam_role" "endpoint_role" {
 resource "aws_iam_role_policy" "endpoint_policy" {
   name = "test_policy"
   role = aws_iam_role.endpoint_role.id
-  policy = jsonencode(
-    {
-        Version = "2012-10-17"
-        Statement = [
-            {
-                Sid = "AllowSMAccess",
-                Effect = "Allow",
-                Action = [
-                    "cloudwatch:PutMetricData",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents",
-                    "logs:CreateLogGroup",
-                    "logs:DescribeLogStreams",
-                    "s3:GetObject",
-                    "s3:PutObject",
-                    "s3:ListBucket",
-                    "ecr:GetAuthorizationToken",
-                    "ecr:BatchCheckLayerAvailability",
-                    "ecr:GetDownloadUrlForLayer",
-                    "ecr:BatchGetImage"
-                ],
-                Resource = ["*"]
-                }
-            ]
-        }
-    )
+  policy = var.endpoint_iam_policy
 }
 
 
@@ -161,7 +136,7 @@ resource "aws_sagemaker_endpoint_configuration" "main" {
       content {
         max_concurrency   = try(local.endpoint_configs[each.key]["serverless_config"]["max_concurrency"], null)
         memory_size_in_mb = try(local.endpoint_configs[each.key]["serverless_config"]["memory_size_in_mb"], null)
-        provisioned_concurrenty = try(local.endpoint_configs[each.key]["serverless_config"]["provisioned_concurrenty"], null)
+        provisioned_concurrency = try(local.endpoint_configs[each.key]["serverless_config"]["provisioned_concurrency"], null)
       }
     }
 

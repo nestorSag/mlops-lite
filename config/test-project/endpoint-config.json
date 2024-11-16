@@ -1,0 +1,28 @@
+{
+    "data_capture_config": {
+        "initial_sampling_percentage": 1,
+        "enable_capture": true,
+        "capture_options": {
+            "capture_mode": "InputAndOutput"
+        },
+        "destination_s3_uri": null
+    },
+
+    "production_variants": {
+        "variant_name": "AllTraffic",
+        "initial_instance_count": 1,
+        "instance_type": "ml.t2.medium",
+        "volume_size_in_gb": 30,
+        "inference_ami_version": null,
+        "serverless_config": {
+            "max_concurrency": 10,
+            "memory_size_in_mb": 4096,
+            "provisioned_concurrency": 5
+        },
+        "managed_instance_scaling": {
+            "status": "ENABLED",
+            "min_instance_count": 1,
+            "max_instance_count": 2
+        }
+    }
+}

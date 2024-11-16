@@ -62,14 +62,18 @@ module "training_jobs" {
 
 }
 
-module "deployment_jobs" {
+# module "deployment_jobs" {
 
-  source = "./deployment-jobs"
+#   source = "./deployment-jobs"
 
-  count = length(local.deployment_jobs) > 0 ? 1 : 0
+#   count = length(local.deployment_jobs) > 0 ? 1 : 0
 
-  depends_on = [module.mlflow_server, module.training_jobs]
+#   depends_on = [module.mlflow_server, module.training_jobs]
 
-  deployment_jobs = local.deployment_jobs
+#   deployment_jobs = local.deployment_jobs
 
-}
+#   mlflow_tracking_uri = module.mlflow_server.mlflow_tracking_uri
+
+#   endpoint_iam_policy = local.default_endpoint_iam_policy
+
+# }

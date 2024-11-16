@@ -1,6 +1,6 @@
 # Lean MLOps control centre with MLFlow + AWS + Terraform
 
-This project allows you to manage the life cycle of your ML projects easily: train, track, deploy, monitor or retire your models with a single command. 
+This project allows you to manage the life cycle of your ML projects easily: train, track, deploy, monitor or retire your models in one line. Defining custom permissions, hardware resources, scaling policies and deployment strategies is also straightforward.
 
 It uses MLFlow to track and containerise models, AWS services to productionise them, and Terraform to keep track of the infrastructure.
 
@@ -45,6 +45,7 @@ Add a new subfolder in the `ml-projects` folder sticking to the following constr
 
 * Your `MLProject` code is responsible for fetching the data (e.g. from S3), training the model and logging it to MLFlow along with any other artifacts; you can assume `MLFLOW_TRACKING_URI` will point to the provisioned server automatically. See the example included. Note even jupyter notebooks are fine, as long as they log the model as a valid [MLFlow Model](https://mlflow.org/docs/latest/models.html); this is straightforward to do for most ML libraries using the `mlflow` client library.
 
+
 ## Launching (re)training jobs
 
 run `make training-job project=<my-project>`, where `my-project` is a subfolder in `ml-projects`. This will use Terraform to
@@ -61,7 +62,7 @@ Your training job will be launched on top of the above infrastructure. The end r
 
 ### Specifying computational requirements
 
-You can create a `resource-requirements.json` file in `config/<my-project>/` with the following format to specify the computational requirements of your training job:
+You can create a `training-resource-requirements.json` file in `config/<my-project>/` with the following format to specify the computational requirements of your training job:
 
 ```json
 [
@@ -75,7 +76,7 @@ The GPU line is optional, and you can remove it if your model does not use GPUs.
 
 ### Permissions for training containers
 
-You can specify custom IAM policies for your training containers in `config/global/training-jobs-policy.json`. If the file is not found, a default policy is used, which allows containers to
+The default IAM policies for training containers allows them to
 
 * Read and write to any S3 bucket
 
@@ -83,6 +84,7 @@ You can specify custom IAM policies for your training containers in `config/glob
 
 * Read Secrets Store values with preffix `${var.project}/${var.region}/${var.env_name}`.
 
+You can change it in `./terraform/defaults.tf`. 
 Note the same IAM policies are used for all ML projects.
 
 ### Passing environment variables to training containers
@@ -105,7 +107,7 @@ run `make deployment-job project=<my-project> version=<my-version>`, where `my-p
 
 ### Endpoint and deployment configuration
 
-You can create files `./config/<project>/endpoint.config` and `./config/<project>/deployment.config` to specify endpoint and deployment configuration for each project. Note they should mirror the resource structure for [`sagemaker_endpoint_configuration`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sagemaker_endpoint_configuration) and `sagemaker_endpoint`'s [DeploymentConfig](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sagemaker_endpoint) respectively.
+You can create files `./config/<project>/endpoint-config.json` and `./config/<project>/deployment-config.json` to specify endpoint and deployment configuration for each project. Note they should mirror the resource structure for [`sagemaker_endpoint_configuration`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sagemaker_endpoint_configuration) and `sagemaker_endpoint`'s [DeploymentConfig](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sagemaker_endpoint) respectively.
 
 Both blue-green and rollout deployments are supported, but not all other parameters are. See the defaults included in this project at `./terraform/defaults.tf` to get an idea of supported parameter blocks. By default, the endpoints are serverless and use a blue-green deployment strategy.
 
@@ -118,33 +120,12 @@ Data capture and async inference are enabled and managed by default, and results
 
 The deployment image is the one provided by default by MLFlow
 
-## Model monitoring
-
-
-## Endpoint decomissioning
-
-
-### Specifying SageMaker endpoint configuration
-
-You can add a `resource-requirements.json` file in `ml-projects/<my-project>` with the following format to specify the computational requirements of your training job:
-
-```json
-[
-    {"type": "VCPU", "value": "2"},
-    {"type": "MEMORY", "value": "4096"},
-    {"type": "GPU", "value": "1"}
-]
-```
-
-The GPU line is optional, and you can remove it if your model does not use GPUs. If this file is not found, default values are used. You can set your own defaults with Terraform's `default_training_resource_requirements` variable.
 
 ### Tearing down deployment job infrastructure
 
 Deployment job infrastructure for a specific project can be tear down with `make deployment-job-rm project=<my-project>`
 
-## Model rollouts and rollbacks
-
-Both model updates and rollbacks are handled by simply deploying a different model version under an existing endpoint.
+## Model monitoring
 
 
 # Life cycle management with GitHub actions
@@ -174,7 +155,7 @@ export TF_VAR_env_name=<my-env>
 
 5. As long as you have the necessary AWS permissions, you can provision the MLFlow server at this point running `make mlflow-server`.
 
-6. Review the default permissions and configuration at `./terraform/defaults.tf` before training or deploying any model.
+6. Review the default permissions and configuration at `./terraform/defaults.tf` before launching any training or deployment jobs.
 
 6. If you need to access the UI, [set up the server's VPN locally](https://github.com/nestorSag/terraform-aws-mlflow-server).
 
@@ -191,4 +172,4 @@ export TF_VAR_env_name=<my-env>
 
 * At this time, The support for the MLFlow server's metadata DB is limited to MySQL 8.0
 
-* This project does not implement shadow or blue/green deployment at this time.
+* This project does not implement shadow deployment at this time.

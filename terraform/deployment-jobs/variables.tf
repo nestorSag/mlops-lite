@@ -9,3 +9,7 @@ variable deployment_jobs {
     default = []
 }
 
+variable endpoint_iam_policy = {
+    description = "IAM policy to attach to the endpoint role"
+    type    = string
+}

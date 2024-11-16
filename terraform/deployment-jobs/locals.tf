@@ -2,7 +2,7 @@ locals {
     user_provided_enpoint_configs = {
         for job in var.deployment_jobs : 
             job => 
-            fileexists("${path.root}/../ml-projects/${job}/endpoint-config.json") ? jsondecode(file("${path.root}/../ml-projects/${job}/endpoint-config.json")) : tomap({})
+            fileexists("${path.root}/../config/${job}/endpoint-config.json") ? jsondecode(file("${path.root}/../config/${job}/endpoint-config.json")) : tomap({})
     }
     endpoint_configs = {
         for job in var.deployment_jobs : 
@@ -13,7 +13,7 @@ locals {
     user_provided_enpoint_deployment_configs = {
         for job in var.deployment_jobs : 
             job => 
-            fileexists("${path.root}/../ml-projects/${job}/endpoint-deployment-config.json") ? jsondecode(file("${path.root}/../ml-projects/${job}/endpoint-deployment-config.json")) : tomap({})
+            fileexists("${path.root}/../config/${job}/endpoint-deployment-config.json") ? jsondecode(file("${path.root}/../config/${job}/endpoint-deployment-config.json")) : tomap({})
     }
     deployment_endpoint_configs = {
         for job in var.deployment_jobs : 

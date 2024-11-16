@@ -2,7 +2,7 @@ locals{
     # if you change this, change also in the makefile
     default_namespace = "${var.project}/${var.region}/${var.env_name}"
 
-    # only applicable to projects where ml-projects/<project>/resource-requirements.json is not found
+    # only applicable to projects where ml-projects/<project>/training-resource-requirements.json is not found
     default_training_resource_requirements = [
         { type = "VCPU", value = "2" },
         { type = "MEMORY", value = "4096" }
@@ -51,8 +51,34 @@ locals{
         }
     )
 
+    # used for every project
+    default_endpoint_iam_policy = jsonencode(
+    {
+        Version = "2012-10-17"
+        Statement = [
+            {
+                Sid = "AllowSMAccess",
+                Effect = "Allow",
+                Action = [
+                    "cloudwatch:PutMetricData",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                    "logs:CreateLogGroup",
+                    "logs:DescribeLogStreams",
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:ListBucket",
+                    "ecr:GetAuthorizationToken",
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage"
+                ],
+                Resource = ["*"]
+                }
+            ]
+        }
+    )
     # only applicable for projects where ml-projects/<project>/endpoint-config.json is not found
-    # commented values are inferred automatically by Terraform
     # Currently, only the parameters below are supported. Adding more parameters will have no effect, unless you change
     # the Terraform code in ./deployment-jobs/main.tf
     default_endpoint_config = {
@@ -63,7 +89,7 @@ locals{
             capture_options = {
                 capture_mode = "InputAndOutput",
             }
-            # destination_s3_uri = null # defined by Terraform
+            destination_s3_uri = null # defined by Terraform module
         }
 
         production_variants = {
@@ -75,9 +101,9 @@ locals{
             inference_ami_version = null,
 
             serverless_config = {
-                max_concurrency = 100,
-                memory_size_in_mb = 2048,
-                provisioned_concurrenty = 100
+                max_concurrency = 10,
+                memory_size_in_mb = 4096,
+                provisioned_concurrency = 5
             }
 
             managed_instance_scaling = {

@@ -9,6 +9,12 @@ locals {
         ]
         # map of the form { job_name -> sha1_hash_of_files_in_mlproject_directory }
     )
+    user_provided_resource_requirements = {
+        for job in var.training_jobs : job => fileexists("${path.root}/../config/${job}/training-resource-requirements.json") ? jsondecode(file("${path.root}/../config/${job}/training-resource-requirements.json")) : {}
+    }
+    resource_requirements = {
+        for job in var.training_jobs : job => length(local.user_provided_resource_requirements[job]) > 0 ? local.user_provided_resource_requirements[job] : var.default_training_resource_requirements
+    }
     job_definitions = {
         for job in var.training_jobs : job => {
             name           = "training_job_${job}"
@@ -30,8 +36,8 @@ locals {
                         value = job
                     }
                 ]
-                # custom resource requirements can be defined in ml-projects/${job}/resource-requirements.json
-                resourceRequirements = fileexists("${path.root}/../ml-projects/${job}/resource-requirements.json") ? jsondecode(file("${path.root}/../ml-projects/${job}/resource-requirements.json")) : var.default_training_resource_requirements
+                # custom resource requirements can be defined in ml-projects/${job}/training-resource-requirements.json
+                resourceRequirements = resource_requirements[job]
                 logConfiguration = {
                     logDriver = "awslogs"
                     options = {
