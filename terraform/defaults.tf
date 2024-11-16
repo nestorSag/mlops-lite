@@ -2,7 +2,7 @@ locals{
     # if you change this, change also in the makefile
     default_namespace = "${var.project}/${var.region}/${var.env_name}"
 
-    # only applicable to projects where ml-projects/<project>/training-resource-requirements.json is not found
+    # only applicable to projects where config/<project>/training-resource-requirements.json is not found
     default_training_resource_requirements = [
         { type = "VCPU", value = "2" },
         { type = "MEMORY", value = "4096" }
@@ -78,7 +78,7 @@ locals{
             ]
         }
     )
-    # only applicable for projects where ml-projects/<project>/endpoint-config.json is not found
+    # only applicable for projects where config/<project>/endpoint-config.json is not found
     # Currently, only the parameters below are supported. Adding more parameters will have no effect, unless you change
     # the Terraform code in ./deployment-jobs/main.tf
     default_endpoint_config = {
@@ -115,6 +115,7 @@ locals{
         }
     }
 
+    # only applicable for projects where config/<project>/endpoint-deployment-config.json is not found
     default_endpoint_deployment_config = {
 
         blue_green_update_policy = {
