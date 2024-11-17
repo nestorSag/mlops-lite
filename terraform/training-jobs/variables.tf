@@ -32,7 +32,7 @@ variable vpc_id {
     type    = string
 }
 
-variable default_training_jobs_iam_policy {
+variable training_jobs_iam_policy {
     description = "valid IAM policy JSON for training job containers"
     type    = string
 }

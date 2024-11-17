@@ -24,7 +24,7 @@ It should work out of the box for models that can be trained in a single EC2 ins
 
 # Workflow
 
-Models are specified as MLProjects, and their life cycle is controlled through the project's Makefile, which calls Terraform to provision the MFLow server as well as training and deployment infrastructure. Available `make` rules are
+Models are specified as [MLFlow projects](https://mlflow.org/docs/latest/projects.html), and their life cycle is controlled through Makefile rules, which calls Terraform to manage training, deployment and monitoring infrastructure. Available `make` rules are
 
 ```
 deployment          Provisions model deployment infrastructure. Example use: make deployment project=test-project version=latest. 
@@ -121,6 +121,8 @@ run `make deployment project=<my-project> version=<my-version>`, where `my-proje
 2. Create an AWS SageMaker endpoint where the model is to be deployed
 
 3. Create CloudWatch dashboards to track endpoint metrics, as well as model and data metrics.
+
+![Deployment job architecture](./other/images/deployment-jobs.png)
 
 ### Endpoint and deployment configuration
 

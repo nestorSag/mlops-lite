@@ -209,7 +209,7 @@ resource "aws_iam_role" "instance_role" {
 resource "aws_iam_role_policy" "instance_policy" {
   name = "test_policy"
   role = aws_iam_role.instance_role.id
-  policy = var.default_training_jobs_iam_policy
+  policy = var.training_jobs_iam_policy
 }
 
 resource "aws_cloudwatch_log_group" "training_jobs_log_group" {

@@ -3,7 +3,13 @@ output "mlflow_tracking_uri" {
   value       = module.mlflow_server.mlflow_tracking_uri
 }
 
-output training_jobs {
+output "training_jobs" {
   description = "Training jobs"
   value       = local.training_jobs
 }
+
+output "deployment_jobs" {
+  description = "Deployment jobs"
+  value       = local.deployment_jobs
+}
+

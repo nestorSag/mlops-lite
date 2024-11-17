@@ -9,7 +9,7 @@ locals{
     ] 
 
     # used for every project
-    default_training_jobs_iam_policy = jsonencode(
+    training_jobs_iam_policy = jsonencode(
         {
             Version = "2012-10-17"
             Statement = [
@@ -52,7 +52,7 @@ locals{
     )
 
     # used for every project
-    default_endpoint_iam_policy = jsonencode(
+    endpoint_iam_policy = jsonencode(
     {
         Version = "2012-10-17"
         Statement = [
@@ -68,6 +68,7 @@ locals{
                     "s3:GetObject",
                     "s3:PutObject",
                     "s3:ListBucket",
+                    "s3:getHeadObject",
                     "ecr:GetAuthorizationToken",
                     "ecr:BatchCheckLayerAvailability",
                     "ecr:GetDownloadUrlForLayer",
