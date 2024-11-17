@@ -60,6 +60,8 @@ Your training job will be launched on top of the above infrastructure. The end r
 
 ![Architecture diagram](other/images/training-jobs.png)
 
+Note any uncommited changes in MLProjects with a deployed training job pipeline will trigger an image rebuild and reupload whenever a new training job is created, even if for a different MLProject, and could result in leaking uncommited code changes into your MLOps infrastructure. It is recommended that you [launch jobs through GitHub actions instead](#life-cycle-management-with-github-actions) to avoid this.
+
 ### Specifying computational requirements
 
 You can create a `training-resource-requirements.json` file in `config/<my-project>/` with the following format to specify the computational requirements of your training job:
@@ -131,6 +133,10 @@ Deployment job infrastructure for a specific project can be tear down with `make
 # Life cycle management with GitHub actions
 
 Every step of the workflow above can be performed by manually launching GitHub action workflows. This has the advantage of preventing uncommited code leaks into your model life cycle, and setting clear permissions boundaries for who can launch what kind of job.
+
+## Teardown
+
+running `make teardown` will delete all of the infrastructure in this project. It is encouraged to use this command instead of directly calling `terraform destroy`, because some parameters in the Parameter Store are not managed by Terraform, and to avoid some Terraform bugs when attempting to delete AWS Batch compute environments.
 
 # Getting started
 

@@ -108,10 +108,6 @@ tf-apply: ssm_params
 ## Provisions the MLflow server infrastructure
 mlflow-server: tf-apply
 
-## Tears down Terraform infrastructure
-teardown: 
-	cd ./terraform && terraform destroy -var-file=terraform.tfvars
-
 # Checks that the project folder exists, then updates the SSM parameter set and applies the Terraform configuration
 update-ssm-set:
 	if [ -d ml-projects/$(project) ]; then \
@@ -161,3 +157,12 @@ deployment-job:
 deployment-job-rm: 
 	make update-ssm-json action=remove ssm_param=$(SSM_DEPLOYMENT_JOBS_JSON) key=$(project)
 	make tf-apply
+
+## Tears down Terraform infrastructure
+teardown: 
+	python utils/delete_batch_compute_env.py \
+		--env_name=$${cd terraform && terraform output training_jobs_compute_env} \
+		--queue_name=$${cd terraform && terraform output training_jobs_queue}
+	cd ./terraform && terraform destroy -var-file=terraform.tfvars
+	aws ssm delete-parameter --name $(SSM_TRAINING_JOB_SET)
+	aws ssm delete-parameter --name $(SSM_DEPLOYMENT_JOBS_JSON)

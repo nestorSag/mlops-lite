@@ -96,7 +96,7 @@ locals{
             variant_name = "AllTraffic",
 
             initial_instance_count = 1,
-            instance_type = "ml.t2.medium",
+            # instance_type = "ml.t2.medium",
             volume_size_in_gb = 30,
             inference_ami_version = null,
 

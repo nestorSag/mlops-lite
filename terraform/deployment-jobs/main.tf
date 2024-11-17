@@ -50,6 +50,7 @@ resource "null_resource" "bundle_build_and_push_model_image" {
         --model models:/${each.key}/${each.value} \
         --name ${module.ecr[each.key].repository_url}:v${each.value}
 
+    rm -rf ./tmp
     aws ecr get-login-password --region ${data.aws_region.current.name} | docker login --username AWS --password-stdin ${module.ecr[each.key].repository_url}
     docker push ${module.ecr[each.key].repository_url}:v${each.value}
     EOT
@@ -91,7 +92,7 @@ resource "aws_iam_role_policy" "endpoint_policy" {
 
 resource "aws_sagemaker_model" "model" {
   for_each = var.deployment_jobs
-  name = "${each.key}_model"
+  name = "${each.key}-${each.value}-model"
   execution_role_arn = aws_iam_role.endpoint_role.arn
 
   primary_container {
