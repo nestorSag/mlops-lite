@@ -24,6 +24,21 @@ It should work out of the box for models that can be trained in a single EC2 ins
 
 # Workflow
 
+Models are specified as MLProjects, and their life cycle is controlled through the project's Makefile, which calls Terraform to provision the MFLow server as well as training and deployment infrastructure. Available `make` rules are
+
+```
+deployment          Provisions model deployment infrastructure. Example use: make deployment project=test-project version=latest. 
+deployment-rm       Tears down model deployment infrastructure. Example use: make deployment-rm project=test-project. 
+help                Display this help message 
+mlflow-server       Provisions the MLflow server infrastructure 
+teardown            Tears down Terraform infrastructure 
+training-infra      Provisions the training job pipeline infrastructure. Example use: make training-job project=test-project. 
+training-infra-rm   Tears down the training job infrastructure. Example use: make training-job-rm project=test-project. 
+training-job        Launches a training job, provisioning the infrastructure if needed. Example use: make training-job project=test-project
+```
+
+Use `make help` to see a list of up to date rules. See life cycle details below.
+
 ## MLFlow provisioning
 
 This project uses [this Terraform module](https://github.com/nestorSag/terraform-aws-mlflow-server) to provision a production MLFlow server. Run `make mlflow-server` to start the process. The server architecture is shown below.
@@ -99,7 +114,7 @@ Training job infrastructure for a specific project can be tear down with `make t
 
 ## Launching deployment jobs 
 
-run `make deployment-job project=<my-project> version=<my-version>`, where `my-project` is a subfolder in `ml-projects` and `<my-version>` is an available model version in the MLFlow Registry under the `<my-project>` name. This will use Terraform and MLFlow to
+run `make deployment project=<my-project> version=<my-version>`, where `my-project` is a subfolder in `ml-projects` and `<my-version>` is an available model version in the MLFlow Registry under the `<my-project>` name. This will use Terraform and MLFlow to
 
 1. Continerise a specific model from the MLFlow Registry
 
@@ -125,7 +140,7 @@ The deployment image is the one provided by default by MLFlow
 
 ### Tearing down deployment job infrastructure
 
-Deployment job infrastructure for a specific project can be tear down with `make deployment-job-rm project=<my-project>`
+Deployment job infrastructure for a specific project can be tear down with `make deployment-rm project=<my-project>`
 
 ## Model monitoring
 

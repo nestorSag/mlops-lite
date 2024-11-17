@@ -58,29 +58,26 @@ help:
 	}' \
 	| more $(shell test $(shell uname) = Darwin && echo '--no-init --raw-control-chars')
 
-# build:
-# 	echo "Argument 1: $(arg1)"
-# 	echo "Argument 2: $(arg2)"
 
-## Re-runs an MLFlow project locally and optionally creates a new version of the model in the MLFlow registry.
-## Example usage: make local-training project=test-project.
+# Re-runs an MLFlow project locally and optionally creates a new version of the model in the MLFlow registry.
+# Example usage: make local-training project=test-project.
 local-training:
 	MLFLOW_EXPERIMENT_NAME=$(project) mlflow run ml-projects/$(project)
 
-## Deploys the model to a local endpoint in port 5050 using MLFLow. This command is blocking.
-## Example usage: make local-deployment project=test-project version=1.
+# Deploys the model to a local endpoint in port 5050 using MLFLow. This command is blocking.
+# Example usage: make local-deployment project=test-project version=1.
 local-deployment:
 	mlflow models serve \
 		--env-manager=$(DEFAULT_ENV_MANAGER) \
 		-m models:/$(project)/$(version) \
 		-p 5050
 
-## Runs a test request to the local endpoint and returns the result.
+# Runs a test request to the local endpoint and returns the result.
 local-deployment-test:
 	curl http://127.0.0.1:5050/invocations -H 'Content-Type:application/json' -d @./other/input-examples/serve_example.json
 
-## Runs a batch inference job locally, using .csv inputs and outputs.
-## Example usage: make local-batch-inference model=test-project inference_input=input/path.csv inference_output=output/path.csv.
+# Runs a batch inference job locally, using .csv inputs and outputs.
+# Example usage: make local-batch-inference model=test-project inference_input=input/path.csv inference_output=output/path.csv.
 local-batch-inference:
 	mlflow models predict \
 		--env-manager=$(DEFAULT_ENV_MANAGER) \
@@ -133,28 +130,32 @@ update-ssm-json:
         exit 1; \
     fi
 
-## Provisions the training job pipeline. Example use: make training-job project=test-project.
-training-job:
+
+## Provisions the training job pipeline infrastructure. Example use: make training-job project=test-project.
+training-infra:
 	make update-ssm-set ssm_param=$(SSM_TRAINING_JOB_SET) action=add project=$(project)
 	make tf-apply
+
+## Launches a training job, provisioning the infrastructure if needed. Example use: make training-job project=test-project.
+training-job: training-infra
 	aws batch submit-job \
 	--job-name "$(project)-$$(date +%Y-%m-%d-%H-%M-%S)" \
 	--job-queue training_jobs_queue \
 	--job-definition "training_job_$(project)"
 
 
-## Tears down the training job pipeline. Example use: make training-job-rm project=test-project.
-training-job-rm: 
+## Tears down the training job infrastructure. Example use: make training-job-rm project=test-project.
+training-infra-rm: 
 	make update-ssm-set ssm_param=$(SSM_TRAINING_JOB_SET) action=remove project=$(project)
 	make tf-apply
 
-## Provisions model deployment infrastructure. Example use: make deployment-job project=test-project version=latest.
-deployment-job:
+## Provisions model deployment infrastructure. Example use: make deployment project=test-project version=latest.
+deployment:
 	make update-ssm-json action=add ssm_param=$(SSM_DEPLOYMENT_JOBS_JSON) key=$(project) value=$(version)
 	make tf-apply
 
-## Tears down model deployment infrastructure. Example use: make deployment-job-rm project=test-project.
-deployment-job-rm: 
+## Tears down model deployment infrastructure. Example use: make deployment-rm project=test-project.
+deployment-rm: 
 	make update-ssm-json action=remove ssm_param=$(SSM_DEPLOYMENT_JOBS_JSON) key=$(project)
 	make tf-apply
 
