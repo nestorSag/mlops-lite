@@ -110,7 +110,7 @@ Note the same IAM policies are used for all ML projects.
 
 ### Tearing down training job infrastructure
 
-Training job infrastructure for a specific project can be tear down with `make training-job-rm project=<my-project>`
+Training job infrastructure for a specific project can be tear down with `make training-infra-rm project=<my-project>`
 
 ## Launching deployment jobs 
 
