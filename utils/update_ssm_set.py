@@ -7,12 +7,12 @@ import re
 
 import boto3
 
-from init_ssm_set import init_or_get_ssm_set
+from utils.init_ssm_param import init_or_get_ssm_param
 ssm = boto3.client('ssm')
 
 def fetch_ssm_set(param: str) -> set:
     
-    response = init_or_get_ssm_set(param)
+    response = init_or_get_ssm_param(param)
     raw_value = response['Parameter']['Value']
     values = re.search(r'^\[(.*)\]$', raw_value).group(1).split(',')
     values = set([v for v in values if v != ""]) # drop empty strings

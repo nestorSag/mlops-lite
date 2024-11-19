@@ -4,7 +4,7 @@ module "ecr" {
   for_each = toset(var.training_jobs)
   source = "git::github.com/terraform-aws-modules/terraform-aws-ecr?ref=841b3c7"
 
-  repository_name = each.key
+  repository_name = "${each.key}_training"
   repository_image_tag_mutability = "IMMUTABLE"
   repository_force_delete = true
 
@@ -25,7 +25,6 @@ module "ecr" {
       }
     ]
   })
-
 }
 
 resource "null_resource" "bundle_build_and_push_mlproject_image" {
@@ -210,7 +209,7 @@ resource "aws_iam_role" "instance_role" {
 resource "aws_iam_role_policy" "instance_policy" {
   name = "test_policy"
   role = aws_iam_role.instance_role.id
-  policy = var.training_jobs_policy
+  policy = var.training_jobs_iam_policy
 }
 
 resource "aws_cloudwatch_log_group" "training_jobs_log_group" {

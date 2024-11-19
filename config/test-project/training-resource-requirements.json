@@ -1,0 +1,10 @@
+[
+    { 
+        "type": "VCPU", 
+        "value": "2"
+    },
+    { 
+        "type": "MEMORY", 
+        "value": "4096" 
+    }
+]

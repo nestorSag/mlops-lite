@@ -1,12 +1,12 @@
-# Lean MLOps control centre MLFlow + AWS + Terraform
+# Lean MLOps control centre with MLFlow + AWS + Terraform
 
-This project allows you to manage the life cycle of your ML projects easily: train, track, deploy, monitor or retire your models with a single command. 
+This project allows you to manage the life cycle of your ML projects easily: train, track, deploy, monitor or retire your models in one line. Defining custom permissions, hardware resources, scaling policies and deployment strategies is also straightforward.
 
 It uses MLFlow to track and containerise models, AWS services to productionise them, and Terraform to keep track of the infrastructure.
 
 # Scope
 
-It should work out of the box for models that can be trained in a single EC2 instance (up to a few hundred GBs of RAM usage, depending on instance type).  Note this project currently does not implement shadow deployments.
+It should work out of the box for models that can be trained in a single EC2 instance (up to a few hundred GBs of RAM usage, depending on instance type).
 
 # Requirements
 
@@ -24,6 +24,21 @@ It should work out of the box for models that can be trained in a single EC2 ins
 
 # Workflow
 
+Models are specified as [MLFlow projects](https://mlflow.org/docs/latest/projects.html), and their life cycle is controlled through Makefile rules, which calls Terraform to manage training, deployment and monitoring infrastructure. Available `make` rules are
+
+```
+deployment          Provisions model deployment infrastructure. Example use: make deployment project=test-project version=latest. 
+deployment-rm       Tears down model deployment infrastructure. Example use: make deployment-rm project=test-project. 
+help                Display this help message 
+mlflow-server       Provisions the MLflow server infrastructure 
+teardown            Tears down Terraform infrastructure 
+training-infra      Provisions the training job pipeline infrastructure. Example use: make training-job project=test-project. 
+training-infra-rm   Tears down the training job infrastructure. Example use: make training-job-rm project=test-project. 
+training-job        Launches a training job, provisioning the infrastructure if needed. Example use: make training-job project=test-project
+```
+
+Use `make help` to see a list of up to date rules. See life cycle details below.
+
 ## MLFlow provisioning
 
 This project uses [this Terraform module](https://github.com/nestorSag/terraform-aws-mlflow-server) to provision a production MLFlow server. Run `make mlflow-server` to start the process. The server architecture is shown below.
@@ -31,7 +46,7 @@ This project uses [this Terraform module](https://github.com/nestorSag/terraform
 ![Architecture diagram](other/images/mlflow-server.png)
 
 This server will register and containerise any models added to this platform. You can also use it as an experiment tracking platform.
-The server is accessible through a VPN, which is created and managed by Terraform as part of the platform. See the [repo](https://github.com/nestorSag/terraform-aws-mlflow-server) for access instructions.
+The UI is accessible through a VPN, which is created and managed by Terraform as part of the platform. See the [repo](https://github.com/nestorSag/terraform-aws-mlflow-server) for access instructions.
 
 ## Integrating a new model
 
@@ -43,7 +58,8 @@ Add a new subfolder in the `ml-projects` folder sticking to the following constr
 
 * They should be runnable with `mlflow run` without passing any additional `-P` arguments; set defaults as needed.
 
-* Your `MLProject` code is responsible for fetching the data (e.g. from S3), training the model and logging it to MLFlow along with any other artifacts; you can assume `MLFLOW_TRACKING_URI` will point to the provisioned server automatically. See the example included. Note even jupyter notebooks are fine, as long as they log the model as a valid [MLFlow Model](https://mlflow.org/docs/latest/models.html); this is straightforward to do for most ML libraries in Python using existing `mlflow` methods.
+* Your `MLProject` code is responsible for fetching the data (e.g. from S3), training the model and logging it to MLFlow along with any other artifacts; you can assume `MLFLOW_TRACKING_URI` will point to the provisioned server automatically. See the example included. Note even jupyter notebooks are fine, as long as they log the model as a valid [MLFlow Model](https://mlflow.org/docs/latest/models.html); this is straightforward to do for most ML libraries using the `mlflow` client library.
+
 
 ## Launching (re)training jobs
 
@@ -59,9 +75,11 @@ Your training job will be launched on top of the above infrastructure. The end r
 
 ![Architecture diagram](other/images/training-jobs.png)
 
+Note any uncommited changes in MLProjects with a deployed training job pipeline will trigger an image rebuild and reupload whenever a new training job is created, even if for a different MLProject, and could result in leaking uncommited code changes into your MLOps infrastructure. It is recommended that you [launch jobs through GitHub actions instead](#life-cycle-management-with-github-actions) to avoid this.
+
 ### Specifying computational requirements
 
-You can add a `resource-requirements.json` file in `ml-projects/<my-project>` with the following format to specify the computational requirements of your training job:
+You can create a `training-resource-requirements.json` file in `config/<my-project>/` with the following format to specify the computational requirements of your training job:
 
 ```json
 [
@@ -71,11 +89,11 @@ You can add a `resource-requirements.json` file in `ml-projects/<my-project>` wi
 ]
 ```
 
-The GPU line is optional, and you can remove it if your model does not use GPUs. If this file is not found, default values will be used. You must set your own defaults in Terraform variable `default_resource_requirements`.
+The GPU line is optional, and you can remove it if your model does not use GPUs. If this file is not found, default values will be used. You must set your own defaults in Terraform variable `default_training_resource_requirements`.
 
 ### Permissions for training containers
 
-You can specify custom IAM policies for your training containers in `policies/training-jobs-policy.json`. If the file is not found, a default policy is used, which allows containers to
+The default IAM policies for training containers allows them to
 
 * Read and write to any S3 bucket
 
@@ -83,6 +101,7 @@ You can specify custom IAM policies for your training containers in `policies/tr
 
 * Read Secrets Store values with preffix `${var.project}/${var.region}/${var.env_name}`.
 
+You can change it in `./terraform/defaults.tf`. 
 Note the same IAM policies are used for all ML projects.
 
 ### Passing environment variables to training containers
@@ -91,11 +110,11 @@ Note the same IAM policies are used for all ML projects.
 
 ### Tearing down training job infrastructure
 
-Training job infrastructure for a specific project can be tear down with `make training-job-rm project=<my-project>`
+Training job infrastructure for a specific project can be tear down with `make training-infra-rm project=<my-project>`
 
 ## Launching deployment jobs 
 
-run `make deployment-job project=<my-project> model=<my-version>`, where `my-project` is a subfolder in `ml-projects` and `<my-version>` is an available model version in the MLFlow Registry under the `<my-project>` experiment. This will use Terraform and MLFlow to
+run `make deployment project=<my-project> version=<my-version>`, where `my-project` is a subfolder in `ml-projects` and `<my-version>` is an available model version in the MLFlow Registry under the `<my-project>` name. This will use Terraform and MLFlow to
 
 1. Continerise a specific model from the MLFlow Registry
 
@@ -103,32 +122,38 @@ run `make deployment-job project=<my-project> model=<my-version>`, where `my-pro
 
 3. Create CloudWatch dashboards to track endpoint metrics, as well as model and data metrics.
 
-### Specifying SageMaker endpoint configuration
+![Deployment job architecture](./other/images/deployment-jobs.png)
 
-You can add a `resource-requirements.json` file in `ml-projects/<my-project>` with the following format to specify the computational requirements of your training job:
+### Endpoint and deployment configuration
 
-```json
-[
-    {"type": "VCPU", "value": "2"},
-    {"type": "MEMORY", "value": "4096"},
-    {"type": "GPU", "value": "1"}
-]
-```
+You can create files `./config/<project>/endpoint-config.json` and `./config/<project>/deployment-config.json` to specify endpoint and deployment configuration for each project. Note they should mirror the resource structure for [`sagemaker_endpoint_configuration`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sagemaker_endpoint_configuration) and `sagemaker_endpoint`'s [DeploymentConfig](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sagemaker_endpoint) respectively.
 
-The GPU line is optional, and you can remove it if your model does not use GPUs. If this file is not found, default values are used. You can set your own defaults with Terraform's `default_resource_requirements` variable.
+Both blue-green and rollout deployments are supported, but not all other parameters are. See the defaults included in this project at `./terraform/defaults.tf` to get an idea of supported parameter blocks. By default, the endpoints are serverless and use a blue-green deployment strategy.
+
+
+### Data capture and async inference
+
+Data capture and async inference are enabled and managed by default, and results are stored at buckt `s3://<TF_VAR_project>-<TF_VAR_envname>-sagemaker-endpoint-store` and folders `data_capture` and `async_inference` respectively. You can change data capture configuration in `./terraform/defaults.tf`.
+
+### Deployment image
+
+The deployment image is the one provided by default by MLFlow
+
 
 ### Tearing down deployment job infrastructure
 
-Deployment job infrastructure for a specific project can be tear down with `make deployment-job-rm project=<my-project>`
+Deployment job infrastructure for a specific project can be tear down with `make deployment-rm project=<my-project>`
 
-## Model rollouts and rollbacks
-
-Both model updates and rollbacks are handled by simply deploying a different model version under an existing endpoint.
+## Model monitoring
 
 
 # Life cycle management with GitHub actions
 
 Every step of the workflow above can be performed by manually launching GitHub action workflows. This has the advantage of preventing uncommited code leaks into your model life cycle, and setting clear permissions boundaries for who can launch what kind of job.
+
+## Teardown
+
+running `make teardown` will delete all of the infrastructure in this project. It is encouraged to use this command instead of directly calling `terraform destroy`, because some parameters in the Parameter Store are not managed by Terraform, and to avoid some Terraform bugs when attempting to delete AWS Batch compute environments.
 
 # Getting started
 
@@ -149,19 +174,25 @@ export TF_VAR_env_name=<my-env>
 
 3. Make sure your AWS CLI is configured appropriately
 
-4. Create a file `terraform/terraform.tfvvars` and set appropriate values for all Terraform variables.
+4. Mofidy file `./terraform/terraform.tfvars` and set appropriate values for your project.
 
 5. As long as you have the necessary AWS permissions, you can provision the MLFlow server at this point running `make mlflow-server`.
 
-6. Set up the server's VPN locally, and in GitHub Actions if applicable.
+6. Review the default permissions and configuration at `./terraform/defaults.tf` before launching any training or deployment jobs.
 
-7. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to try provisioning training and deployment infrastructure.
+6. If you need to access the UI, [set up the server's VPN locally](https://github.com/nestorSag/terraform-aws-mlflow-server).
 
-⚠️ Keep in mind this project requires broad permissions across multiple services such as ECS, S3, VPC, SNS, RDS, SageMaker, among others.
+7. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to try provisioning training and deployment pipelines.
+
+8. Add model-specific configuration at `./config/<ml-project>` to control permissions, hardware resources and endpoint configurations for individual ML projects.
+
+⚠️ Keep in mind this project requires broad permissions across multiple services such as ECS, S3, VPC, Batch, RDS, SageMaker, among others.
 
 ⚠️ This project uses billable services.
 
 
 # Notes
 
-1. At this time, The support for the MLFlow server's metadata DB is limited to `MySQL` 8.0
+* At this time, The support for the MLFlow server's metadata DB is limited to MySQL 8.0
+
+* This project does not implement shadow deployment at this time.

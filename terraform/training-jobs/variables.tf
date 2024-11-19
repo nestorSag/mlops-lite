@@ -1,4 +1,4 @@
-variable default_resource_requirements {
+variable default_training_resource_requirements {
     description = "Default resource requirements for training jobs"
     type    = list(object({
         type  = string
@@ -32,7 +32,7 @@ variable vpc_id {
     type    = string
 }
 
-variable training_jobs_policy {
+variable training_jobs_iam_policy {
     description = "valid IAM policy JSON for training job containers"
     type    = string
 }
