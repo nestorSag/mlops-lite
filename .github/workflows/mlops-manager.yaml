@@ -1,0 +1,54 @@
+name: "MLOps management workflow through make rules"
+
+on: 
+  workflow_dispatch
+    inputs:
+      make_rule:
+        description: 'Your command will be run as `make <command>`. Add parameters such as project and version as needed'
+        required: false
+        default: 'help'
+
+env:
+  OVPN_FILE_CONTENT: ${{ secrets.OVPN_FILE_CONTENT }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: ${{ vars.TF_VAR_region }}
+  TF_VAR_state_bucket_name: ${{ vars.TF_VAR_state_bucket_name }}
+  TF_VAR_region: ${{ vars.TF_VAR_region }}
+  TF_VAR_project: ${{ vars.TF_VAR_project }}
+  TF_VAR_env_name: ${{ vars.TF_VAR_env_name }}
+  TF_VAR_mlflow_allowed_public_ips
+  TF_EXTRA_FLAGS: -auto-approve
+
+jobs:
+ terraform:
+   name: "Terraform MLOps management"
+   runs-on: ubuntu-latest
+   defaults:
+     run:
+       shell: bash
+       # We keep Terraform files in the terraform directory.
+       working-directory: ./terraform
+   steps:
+    - name: Checkout the repository to the runner
+      uses: actions/checkout@v2
+    - name: Set up Python version
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+    - name: Install Python environment
+      run: pip install -r requirements.txt
+    - name: Setup Terraform with specified version on the runner
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.9.7
+    - name: connect to VPN endpoint
+    - name: connect to VPN endpoint
+        run: |
+          echo "$OVPN_FILE_CONTENT" > config.ovpn
+          sudo openvpn --config config.ovpn --daemon
+          sleep 10  # Wait for the VPN to establish a connection
+    - name: update MLOps platform
+      run: make ${{ inputs.make_rule }}
+
+    

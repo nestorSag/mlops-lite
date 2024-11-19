@@ -100,7 +100,7 @@ tf-apply: ssm_params
 		-backend-config="bucket=$${TF_VAR_state_bucket_name}" \
 		-backend-config="key=$${TF_VAR_project}/$${TF_VAR_env_name}/tf.state" \
 		-backend-config="region=$${TF_VAR_region}" \
-	&& terraform apply -var-file=terraform.tfvars
+	&& terraform apply -var-file=terraform.tfvars $${TF_EXTRA_FLAGS}
 
 ## Provisions the MLflow server infrastructure
 mlflow-server: tf-apply

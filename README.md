@@ -147,10 +147,6 @@ Deployment job infrastructure for a specific project can be tear down with `make
 ## Model monitoring
 
 
-# Life cycle management with GitHub actions
-
-Every step of the workflow above can be performed by manually launching GitHub action workflows. This has the advantage of preventing uncommited code leaks into your model life cycle, and setting clear permissions boundaries for who can launch what kind of job.
-
 ## Teardown
 
 running `make teardown` will delete all of the infrastructure in this project. It is encouraged to use this command instead of directly calling `terraform destroy`, because some parameters in the Parameter Store are not managed by Terraform, and to avoid some Terraform bugs when attempting to delete AWS Batch compute environments.
@@ -190,6 +186,17 @@ export TF_VAR_env_name=<my-env>
 
 ⚠️ This project uses billable services.
 
+# Life cycle management with GitHub actions
+
+Every step of the workflow above can be performed by triggering GitHub action workflows in `mlops-manager.yaml`. This has the advantage of preventing uncommited code leaks into your model life cycle, and setting clear permissions boundaries for who can launch what kind of job. To enable this:
+
+1. Set an AWS user for your GitHub actions runner, and save secrets `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in the repository
+
+2. Set environment variables listed [above](#getting-started) as managed variables
+
+3. Generate a VPN file for the GitHub actions runner, and save its contents as a managed secret in the repository
+
+Terraform changes are auto-approved when launched from GitHub actions.
 
 # Notes
 
