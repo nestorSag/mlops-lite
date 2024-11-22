@@ -1,5 +1,12 @@
 terraform {
   backend "s3" {}
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.74.0"
+      
+    }
+  }
 }
 
 provider "aws" {
@@ -7,6 +14,7 @@ provider "aws" {
   default_tags {
     tags = local.tags
   }
+
 }
 
 module "mlflow_server" {
@@ -62,22 +70,66 @@ module "training_jobs" {
 
 }
 
-# module "deployment_jobs" {
 
-#   source = "./deployment-jobs"
+module "model_security_group" {
+  source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
 
-#   count = length(local.deployment_jobs) > 0 ? 1 : 0
+  name        = "default_model_security_group"
+  description = "Allows traffic from the VPC and VPN CIDR blocks"
+  vpc_id      = module.mlflow_server.vpc_id
 
-#   depends_on = [module.mlflow_server]
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      description = "Access from VPC"
+      cidr_blocks = var.vpc_cidr_block
+    },
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      description = "Access from VPN"
+      cidr_blocks = var.vpn_cidr_block
+    }
+  ]
 
-#   deployment_jobs = local.deployment_jobs
+  egress_with_cidr_blocks = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      description = "Allow all traffic out"
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+}
 
-#   mlflow_tracking_uri = module.mlflow_server.mlflow_tracking_uri
+module "deployment_jobs" {
 
-#   endpoint_iam_policy = local.endpoint_iam_policy
+  source = "./deployment-jobs"
 
-#   default_endpoint_config = var.default_endpoint_config
+  count = length(local.deployment_jobs) > 0 ? 1 : 0
 
-#   default_endpoint_deployment_config = var.default_endpoint_deployment_config
+  depends_on = [module.mlflow_server]
 
-# }
+  deployment_jobs = local.deployment_jobs
+
+  mlflow_tracking_uri = module.mlflow_server.mlflow_tracking_uri
+
+  endpoint_iam_policy = local.endpoint_iam_policy
+
+  default_endpoint_config = local.default_endpoint_config
+
+  default_endpoint_deployment_config = local.default_endpoint_deployment_config
+
+  project = var.project
+  env_name = var.env_name
+
+  s3_force_destroy = var.s3_force_destroy
+
+  model_security_group_ids = [module.model_security_group.security_group_id]
+
+  subnet_ids = [module.mlflow_server.server_subnet_ids]
+}

@@ -15,7 +15,7 @@ module "s3_bucket" {
 }
 
 module "ecr" {
-  for_each = toset(var.deployment_jobs)
+  for_each = var.deployment_jobs
   source = "git::github.com/terraform-aws-modules/terraform-aws-ecr?ref=841b3c7"
 
   repository_name = "${each.key}_deployment"
@@ -45,7 +45,7 @@ resource "null_resource" "bundle_build_and_push_model_image" {
   for_each = var.deployment_jobs
   provisioner "local-exec" {
     command = <<-EOT
-    MLFLOW_TRACKING_URI=${module.mlflow_server.mlflow_tracking_uri} \
+    MLFLOW_TRACKING_URI=${var.mlflow_tracking_uri} \
     mlflow models build-docker \ 
         --model models:/${each.key}/${each.value} \
         --name ${module.ecr[each.key].repository_url}:v${each.value}
@@ -101,14 +101,13 @@ resource "aws_sagemaker_model" "model" {
 
   vpc_config {
     security_group_ids = var.model_security_group_ids
-    subnet_ids         = module.model_subnet_ids
+    subnets            = var.subnet_ids
   }
 }
 
 resource "aws_sagemaker_endpoint_configuration" "main" {
   for_each = var.deployment_jobs
   name  = "${each.key}-${each.value}-config"
-  tags  = var.tags
 
   dynamic "data_capture_config" {
     for_each = local.endpoint_configs[each.key]["data_capture_config"] != null ? [1] : []
@@ -149,12 +148,12 @@ resource "aws_sagemaker_endpoint_configuration" "main" {
         status = try(local.endpoint_configs[each.key]["managed_instance_scaling"]["status"], null)
       }
     }
+  }
 
-    async_inference_config {
-      output_config {
-        s3_output_path = "${module.s3_bucket.bucket}/async_inference/${each.key}/output"
-        s3_error_path  = "${module.s3_bucket.bucket}/async_inference/${each.key}/error"
-      }
+  async_inference_config {
+    output_config {
+      s3_output_path = "${module.s3_bucket.s3_bucket_arn}/async_inference/${each.key}/output"
+      s3_failure_path  = "${module.s3_bucket.s3_bucket_arn}/async_inference/${each.key}/error"
     }
   }
 }
@@ -163,13 +162,12 @@ resource "aws_sagemaker_endpoint" "main" {
   for_each = var.deployment_jobs
   endpoint_config_name = aws_sagemaker_endpoint_configuration.main[each.key].name
   name        = "${each.key}-endpoint"
-  tags                 = var.tags
   deployment_config {
 
     dynamic "blue_green_update_policy" {
       for_each = local.deployment_endpoint_configs[each.key]["blue_green_update_policy"] != null ? [1] : []
       content {
-        termination_wait_time_in_seconds = try(
+        termination_wait_in_seconds = try(
           local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["termination_wait_time_in_seconds"], 
           null
         )
@@ -186,14 +184,32 @@ resource "aws_sagemaker_endpoint" "main" {
             local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["wait_interval_in_seconds"], 
             null
           )
-          linear_step_size = try(
-            local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["linear_step_size"], 
-            null
-          )
-          canary_size = try(
-            local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["canary_size"], 
-            null
-          )
+          dynamic "linear_step_size" {
+            for_each = local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["linear_step_size"] != null ? [1] : []
+            content {
+              value = try(
+                local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["linear_step_size"]["value"], 
+                null
+              )
+              type = try(
+                local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["linear_step_size"]["type"], 
+                null
+              )
+            }
+          }
+          dynamic "canary_size" {
+            for_each = local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["canary_size"] != null ? [1] : []
+            content {
+              type = try(
+                local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["canary_size"]["type"], 
+                null
+              )
+              value = try(
+                local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["canary_size"]["value"], 
+                null
+              )
+            }
+          }
         }
         
       }
@@ -201,27 +217,26 @@ resource "aws_sagemaker_endpoint" "main" {
 
     dynamic "rolling_update_policy" {
       for_each = local.deployment_endpoint_configs[each.key]["rolling_update_policy"] != null ? [1] : []
-      maximum_batch_size {
-        type = try(
-          local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["maximum_batch_size"]["type"], 
+      content {
+        maximum_batch_size {
+          type = try(
+            local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["maximum_batch_size"]["type"], 
+            null
+          )
+          value = try(
+            local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["maximum_batch_size"]["value"], 
+            null
+          )
+        }
+        maximum_execution_timeout_in_seconds = try(
+          local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["maximum_execution_timeout_in_seconds"], 
           null
         )
-        value = try(
-          local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["maximum_batch_size"]["value"], 
+        wait_interval_in_seconds = try(
+          local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["wait_interval_in_seconds"], 
           null
         )
-      }
-      maximum_execution_timeout_in_seconds = try(
-        local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["maximum_execution_timeout_in_seconds"], 
-        null
-      )
-      wait_interval_in_seconds = try(
-        local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["wait_interval_in_seconds"], 
-        null
-      )
-      dynamic "rollback_maximum_batch_size" {
-        for_each = local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["rollback_maximum_batch_size"] != null ? [1] : []
-        content {
+        rollback_maximum_batch_size {
           type = try(
             local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["rollback_maximum_batch_size"]["type"], 
             null
@@ -230,18 +245,9 @@ resource "aws_sagemaker_endpoint" "main" {
             local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["rollback_maximum_batch_size"]["value"], 
             null
           )
-        }
-      } 
+        } 
+      }
     }
-
-    # dynamic "auto_rollback_configuration" {
-    #   for_each = local.deployment_endpoint_configs[each.key]["auto_rollback_configuration"] != null ? [1] : []
-    #   content {
-    #     alarms = [
-
-    #     ]
-    #   }
-    # }
   }
 }
 

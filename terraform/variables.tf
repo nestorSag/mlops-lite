@@ -80,7 +80,7 @@ variable "db_deletion_protection" {
 }
 
 variable "s3_force_destroy" {
-    description = "Allows Terraform to destroy the MLFlow artifact bucket even if it contains objects"
+    description = "Allows Terraform to destroy S3 buckets even if they contain objects"
     type        = bool
 }
 
@@ -116,3 +116,5 @@ variable max_vcpus {
     description = "Maximum number of vCPUs to use for training jobs"
     type        = number
 }
+
+############### DEPLOYMENT JOBS VARIABLES ################

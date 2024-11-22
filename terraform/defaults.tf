@@ -82,50 +82,53 @@ locals{
     # only applicable for projects where config/<project>/endpoint-config.json is not found
     # Currently, only the parameters below are supported. Adding more parameters will have no effect, unless you change
     # the Terraform code in ./deployment-jobs/main.tf
-    default_endpoint_config = {
-        
-        data_capture_config = {
-            initial_sampling_percentage = 1,
-            enable_capture = true,
-            capture_options = {
-                capture_mode = "InputAndOutput",
+    default_endpoint_config = jsonencode(
+        {
+            
+            data_capture_config = {
+                initial_sampling_percentage = 1,
+                enable_capture = true,
+                capture_options = {
+                    capture_mode = "InputAndOutput",
+                }
+                destination_s3_uri = null # defined by Terraform module
             }
-            destination_s3_uri = null # defined by Terraform module
+
+            production_variants = {
+                variant_name = "AllTraffic",
+
+                initial_instance_count = 1,
+                # instance_type = "ml.t2.medium",
+                volume_size_in_gb = 30,
+                inference_ami_version = null,
+
+                serverless_config = {
+                    max_concurrency = 10,
+                    memory_size_in_mb = 4096,
+                    provisioned_concurrency = 5
+                }
+
+                managed_instance_scaling = {
+                    status = "ENABLED",
+                    min_instance_count = 1,
+                    max_instance_count = 2,
+                }
+
+            }
         }
-
-        production_variants = {
-            variant_name = "AllTraffic",
-
-            initial_instance_count = 1,
-            # instance_type = "ml.t2.medium",
-            volume_size_in_gb = 30,
-            inference_ami_version = null,
-
-            serverless_config = {
-                max_concurrency = 10,
-                memory_size_in_mb = 4096,
-                provisioned_concurrency = 5
-            }
-
-            managed_instance_scaling = {
-                status = "ENABLED",
-                min_instance_count = 1,
-                max_instance_count = 2,
-            }
-
-        }
-    }
+    )
 
     # only applicable for projects where config/<project>/endpoint-deployment-config.json is not found
-    default_endpoint_deployment_config = {
-
-        blue_green_update_policy = {
-            traffic_routing_configuration = {
-                type = "linear",
-                wait_interval_in_seconds = 60,
-                linear_step_size = 25
+    default_endpoint_deployment_config = jsonencode(
+        {
+            blue_green_update_policy = {
+                traffic_routing_configuration = {
+                    type = "linear",
+                    wait_interval_in_seconds = 60,
+                    linear_step_size = 25
+                }
+                termination_wait_time_in_seconds = 0
             }
-            termination_wait_time_in_seconds = 0
         }
-    }
+    )
 }

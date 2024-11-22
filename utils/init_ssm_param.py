@@ -33,5 +33,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     _ = init_or_get_ssm_param(
-        args.param
+        args.param,
+        args.is_json
     )
