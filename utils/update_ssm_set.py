@@ -4,10 +4,11 @@ This script is used to update a set stored in SSM. The set is stored as a comma-
 import argparse
 import logging
 import re
+import os
 
 import boto3
 
-from utils.init_ssm_param import init_or_get_ssm_param
+from init_ssm_param import init_or_get_ssm_param
 ssm = boto3.client('ssm')
 
 def fetch_ssm_set(param: str) -> set:

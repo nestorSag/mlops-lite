@@ -8,7 +8,7 @@ import json
 
 import boto3
 
-from utils.init_ssm_param import init_or_get_ssm_param
+from init_ssm_param import init_or_get_ssm_param
 ssm = boto3.client('ssm')
 
 def fetch_ssm_json(param: str) -> set:

@@ -28,9 +28,4 @@ server_name = "mlflow_server"
 s3_force_destroy = true
 
 
-default_training_resource_requirements = [
-    { type = "VCPU", value = "2" },
-    { type = "MEMORY", value = "4096" }
-]
-
 max_vcpus = 10

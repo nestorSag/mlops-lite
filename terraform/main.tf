@@ -41,43 +41,43 @@ module "mlflow_server" {
 
 }
 
-# module "training_jobs" {
+module "training_jobs" {
 
-#   source = "./training-jobs"
+  source = "./training-jobs"
 
-#   count = length(local.training_jobs) > 0 ? 1 : 0
-
-#   depends_on = [module.mlflow_server]
-  
-#   default_training_resource_requirements = local.default_training_resource_requirements
-#   compute_env_subnet_ids = module.mlflow_server.server_subnet_ids
-  
-#   mlflow_tracking_uri = module.mlflow_server.mlflow_tracking_uri
-#   vpc_id = module.mlflow_server.vpc_id
-
-#   training_jobs = local.training_jobs
-#   training_jobs_iam_policy = local.training_jobs_iam_policy
-
-#   max_vcpus = var.max_vcpus
-
-# }
-
-module "deployment_jobs" {
-
-  source = "./deployment-jobs"
-
-  count = length(local.deployment_jobs) > 0 ? 1 : 0
+  count = length(local.training_jobs) > 0 ? 1 : 0
 
   depends_on = [module.mlflow_server]
-
-  deployment_jobs = local.deployment_jobs
-
+  
+  default_training_resource_requirements = local.default_training_resource_requirements
+  compute_env_subnet_ids = module.mlflow_server.server_subnet_ids
+  
   mlflow_tracking_uri = module.mlflow_server.mlflow_tracking_uri
+  vpc_id = module.mlflow_server.vpc_id
 
-  endpoint_iam_policy = local.endpoint_iam_policy
+  training_jobs = local.training_jobs
+  training_jobs_iam_policy = local.training_jobs_iam_policy
 
-  default_endpoint_config = var.default_endpoint_config
-
-  default_endpoint_deployment_config = var.default_endpoint_deployment_config
+  max_vcpus = var.max_vcpus
 
 }
+
+# module "deployment_jobs" {
+
+#   source = "./deployment-jobs"
+
+#   count = length(local.deployment_jobs) > 0 ? 1 : 0
+
+#   depends_on = [module.mlflow_server]
+
+#   deployment_jobs = local.deployment_jobs
+
+#   mlflow_tracking_uri = module.mlflow_server.mlflow_tracking_uri
+
+#   endpoint_iam_policy = local.endpoint_iam_policy
+
+#   default_endpoint_config = var.default_endpoint_config
+
+#   default_endpoint_deployment_config = var.default_endpoint_deployment_config
+
+# }
