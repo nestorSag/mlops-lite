@@ -100,7 +100,11 @@ tf-apply: ssm_params
 		-backend-config="bucket=$${TF_VAR_state_bucket_name}" \
 		-backend-config="key=$${TF_VAR_project}/$${TF_VAR_env_name}/tf.state" \
 		-backend-config="region=$${TF_VAR_region}" \
-	&& terraform apply -var-file=terraform.tfvars
+	&& terraform refresh \
+		-target=data.aws_ssm_parameter.training_jobs \
+		-target=data.aws_ssm_parameter.deployment_jobs \
+	&& terraform apply \
+	-var-file=terraform.tfvars 
 
 ## Provisions the MLflow server infrastructure
 mlflow-server: tf-apply
@@ -116,11 +120,12 @@ update-ssm-set:
 		echo "Project folder $(project) not found. Please ensure that the project folder exists in ml-projects/."; \
         exit 1; \
     fi
+	cd ./terraform && terraform refresh -target=data.aws_ssm_parameter.*
 
 # Checks that the project folder exists, then updates the SSM JSON string and applies the Terraform configuration
 update-ssm-json:
 	if [ -d ml-projects/$(project) ]; then \
-        python utils/update_ssm_set.py \
+        python utils/update_ssm_json.py \
 		--param=$(ssm_param) \
 		--key=$(project) \
 		--value=$(version) \

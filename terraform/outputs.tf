@@ -13,3 +13,12 @@ output "deployment_jobs" {
   value       = local.deployment_jobs
 }
 
+# output "training_jobs_compute_env" {
+#   description = "Training jobs compute environment"
+#   value       = module.batch.compute_environments
+# }
+
+# output "training_jobs_queue" {
+#   description = "Training jobs queue"
+#   value       = module.batch.job_queues
+# }

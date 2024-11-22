@@ -106,30 +106,30 @@ module "model_security_group" {
   ]
 }
 
-module "deployment_jobs" {
+# module "deployment_jobs" {
 
-  source = "./deployment-jobs"
+#   source = "./deployment-jobs"
 
-  count = length(local.deployment_jobs) > 0 ? 1 : 0
+#   count = length(local.deployment_jobs) > 0 ? 1 : 0
 
-  depends_on = [module.mlflow_server]
+#   depends_on = [module.mlflow_server]
 
-  deployment_jobs = local.deployment_jobs
+#   deployment_jobs = local.deployment_jobs
 
-  mlflow_tracking_uri = module.mlflow_server.mlflow_tracking_uri
+#   mlflow_tracking_uri = module.mlflow_server.mlflow_tracking_uri
 
-  endpoint_iam_policy = local.endpoint_iam_policy
+#   endpoint_iam_policy = local.endpoint_iam_policy
 
-  default_endpoint_config = local.default_endpoint_config
+#   default_endpoint_config = local.default_endpoint_config
 
-  default_endpoint_deployment_config = local.default_endpoint_deployment_config
+#   default_endpoint_deployment_config = local.default_endpoint_deployment_config
 
-  project = var.project
-  env_name = var.env_name
+#   project = var.project
+#   env_name = var.env_name
 
-  s3_force_destroy = var.s3_force_destroy
+#   s3_force_destroy = var.s3_force_destroy
 
-  model_security_group_ids = [module.model_security_group.security_group_id]
+#   model_security_group_ids = [module.model_security_group.security_group_id]
 
-  subnet_ids = [module.mlflow_server.server_subnet_ids]
-}
+#   subnet_ids = module.mlflow_server.server_subnet_ids
+# }

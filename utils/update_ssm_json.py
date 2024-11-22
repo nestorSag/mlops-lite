@@ -62,6 +62,7 @@ if __name__ == '__main__':
     
     update_ssm_json(
         args.param, 
-        args.elem, 
-        args.action == 'add'
+        args.key,
+        args.value,
+        args.action == 'add',
     )
