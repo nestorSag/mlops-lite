@@ -59,33 +59,16 @@ help:
 	| more $(shell test $(shell uname) = Darwin && echo '--no-init --raw-control-chars')
 
 
-# Re-runs an MLFlow project locally and optionally creates a new version of the model in the MLFlow registry.
-# Example usage: make local-training project=test-project.
+## Runs an MLFlow project locally. Example usage: make local-training project=test-project.
 local-training:
 	MLFLOW_EXPERIMENT_NAME=$(project) mlflow run ml-projects/$(project)
 
-# Deploys the model to a local endpoint in port 5050 using MLFLow. This command is blocking.
-# Example usage: make local-deployment project=test-project version=1.
+## Deploys the model to a local endpoint in port 5050. Example usage: make local-deployment project=test-project version=1.
 local-deployment:
 	mlflow models serve \
 		--env-manager=$(DEFAULT_ENV_MANAGER) \
 		-m models:/$(project)/$(version) \
 		-p 5050
-
-# Runs a test request to the local endpoint and returns the result.
-local-deployment-test:
-	curl http://127.0.0.1:5050/invocations -H 'Content-Type:application/json' -d @./other/input-examples/serve_example.json
-
-# Runs a batch inference job locally, using .csv inputs and outputs.
-# Example usage: make local-batch-inference model=test-project inference_input=input/path.csv inference_output=output/path.csv.
-local-batch-inference:
-	mlflow models predict \
-		--env-manager=$(DEFAULT_ENV_MANAGER) \
-		-t $(input_type) \
-		-m models:/$(project)/$(version) \
-		--input-path $(inference_input) \
-		--output-path $(inference_output)
-	echo "Inference completed. Input : $(inference_input), Output : $(inference_output)"
 
 # initialises SSM parameters on which Terraform configuration depends
 ssm_params:
@@ -163,6 +146,12 @@ deployment-rm:
 	make update-ssm-json action=remove ssm_param=$(SSM_DEPLOYMENT_JOBS_JSON) key=$(project)
 	make tf-apply
 
+## Starts a process that sends periodic requests to the local endpoint. Usage: make endpoint-test endpoint_name=<name> sample_data=<path>
+endpoint-test:
+	python utils/test_endpoint.py \
+		--endpoint-name=$(endpoint_name) \
+		--sample-data=$(sample_data) \
+		--region=$${TF_VAR_region}
 ## Tears down Terraform infrastructure
 teardown: 
 	python utils/delete_batch_compute_env.py \
