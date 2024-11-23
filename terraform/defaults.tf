@@ -57,28 +57,66 @@ locals{
         Version = "2012-10-17"
         Statement = [
             {
-                Sid = "AllowSMAccess",
+                Sid = "AllowS3Access",
+                Effect = "Allow",
+                Action = [
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:DeleteObject",
+                    "s3:AbortMultipartUpload",
+                    "s3:CreateBucket",
+                    "s3:GetBucketLocation",
+                    "s3:ListBucket",
+                    "s3:ListAllMyBuckets",
+                    "s3:GetBucketCors",
+                    "s3:PutBucketCors",
+                    "s3:GetBucketAcl",
+                    "s3:PutObjectAcl",
+                ],
+                Resource = ["*"]
+            },
+            {
+                Sid = "AllowLogging",
                 Effect = "Allow",
                 Action = [
                     "cloudwatch:PutMetricData",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents",
                     "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
                     "logs:DescribeLogStreams",
-                    "s3:GetObject",
-                    "s3:PutObject",
-                    "s3:ListBucket",
-                    "s3:getHeadObject",
+                    "logs:PutLogEvents",
+                    "logs:GetLogEvents"
+                ],
+                Resource = ["*"]
+            },
+            {
+                Sid = "AllowECRAccess",
+                Effect = "Allow",
+                Action = [
                     "ecr:GetAuthorizationToken",
                     "ecr:BatchCheckLayerAvailability",
                     "ecr:GetDownloadUrlForLayer",
                     "ecr:BatchGetImage"
                 ],
                 Resource = ["*"]
-                }
-            ]
-        }
-    )
+            },
+            {
+                Sid = "AllowEC2Access",
+                Effect = "Allow",
+                Action = [
+                    "ec2:CreateNetworkInterface",
+                    "ec2:CreateNetworkInterfacePermission",
+                    "ec2:DeleteNetworkInterface",
+                    "ec2:DeleteNetworkInterfacePermission",
+                    "ec2:DescribeNetworkInterfaces",
+                    "ec2:DescribeVpcs",
+                    "ec2:DescribeDhcpOptions",
+                    "ec2:DescribeSubnets",
+                    "ec2:DescribeSecurityGroups"
+                ],
+                Resource = ["*"]
+            }
+        ]
+    })
     # only applicable for projects where config/<project>/endpoint-config.json is not found
     # Currently, only the parameters below are supported. Adding more parameters will have no effect, unless you change
     # the Terraform code in ./deployment-jobs/main.tf
