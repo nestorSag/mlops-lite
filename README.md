@@ -145,7 +145,7 @@ The deployment image is the one provided by default by MLFlow
 Deployment job infrastructure for a specific project can be tear down with `make deployment-rm project=<my-project>`
 
 ## Model monitoring
-
+Performance metrics for each endpoint are automatically integrated in the AWS Console. Data quality monitoring jobs still not implemented in this project. 
 
 # Life cycle management with GitHub actions
 
@@ -180,7 +180,7 @@ export TF_VAR_env_name=<my-env>
 
 6. Review the default permissions and configuration at `./terraform/defaults.tf` before launching any training or deployment jobs.
 
-6. If you need to access the UI, [set up the server's VPN locally](https://github.com/nestorSag/terraform-aws-mlflow-server).
+6. [Set up the server's VPN locally](https://github.com/nestorSag/terraform-aws-mlflow-server).
 
 7. You are ready to go 🚀 you can use the `test-project` subfolder in this repository to try provisioning training and deployment pipelines.
 
@@ -193,6 +193,6 @@ export TF_VAR_env_name=<my-env>
 
 # Notes
 
-* At this time, The support for the MLFlow server's metadata DB is limited to MySQL 8.0
+* The support for the MLFlow server's metadata DB is limited to MySQL 8.0
 
-* This project does not implement shadow deployment at this time.
+* This project does not implement shadow deployment functionality at this time.

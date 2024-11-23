@@ -154,9 +154,11 @@ endpoint-test:
 		--region=$${TF_VAR_region}
 ## Tears down Terraform infrastructure
 teardown: 
-	python utils/delete_batch_compute_env.py \
-		--env_name=$${cd terraform && terraform output training_jobs_compute_env} \
-		--queue_name=$${cd terraform && terraform output training_jobs_queue}
+	cd terraform && python ../utils/delete_batch_compute_env.py \
+		--env_name=$$(terraform output compute_env_name) \
+		--queue_name=$$(terraform output jobs_queue_name)
+	@echo "Waiting for the Batch compute environment to be deleted before continuing..."
+	sleep 30
 	cd ./terraform && terraform destroy -var-file=terraform.tfvars
 	aws ssm delete-parameter --name $(SSM_TRAINING_JOB_SET)
 	aws ssm delete-parameter --name $(SSM_DEPLOYMENT_JOBS_JSON)

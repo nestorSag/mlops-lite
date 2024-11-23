@@ -23,12 +23,12 @@ output "endpoint_bucket" {
   value = module.deployment_jobs[0].endpoint_bucket
 }
 
-# output "training_jobs_compute_env" {
-#   description = "Training jobs compute environment"
-#   value       = module.batch.compute_environments
-# }
+output "compute_env_name" {
+  description = "Training jobs compute environment's ARN"
+  value       = module.training_jobs[0].compute_environments["fargate_compute_env"]["compute_environment_name"]
+}
 
-# output "training_jobs_queue" {
-#   description = "Training jobs queue"
-#   value       = module.batch.job_queues
-# }
+output "jobs_queue_name" {
+  description = "Training jobs queue's ARN"
+  value       = module.training_jobs[0].job_queues["training_jobs_queue"]["name"]
+}

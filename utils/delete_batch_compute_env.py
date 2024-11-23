@@ -30,4 +30,4 @@ if __name__ == '__main__':
     parser.add_argument("--env_name", help="The name of the compute environment to delete")
     parser.add_argument("--queue_name", help="The name of the queue to delete")
     args = parser.parse_args()
-    delete_compute_environment(args.compute_env_name, args.queue_name)
+    delete_compute_environment(args.env_name, args.queue_name)
