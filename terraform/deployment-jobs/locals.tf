@@ -14,4 +14,5 @@ locals {
                 fileexists("${path.root}/../config/${project}/endpoint-deployment-config.json") ? file("${path.root}/../config/${project}/endpoint-deployment-config.json") : var.default_endpoint_deployment_config
             )
     }
+    bucket_name = "${var.project}-${var.env_name}-sagemaker-endpoint-store"
 }

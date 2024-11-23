@@ -13,6 +13,16 @@ output "deployment_jobs" {
   value       = local.deployment_jobs
 }
 
+output "endpoint_arns" {
+  description = "The ARN of SageMaker endpoints"
+  value = module.deployment_jobs[0].endpoint_arns
+}
+
+output "endpoint_bucket" {
+  description = "The S3 bucket where the endpoint logs are stored"
+  value = module.deployment_jobs[0].endpoint_bucket
+}
+
 # output "training_jobs_compute_env" {
 #   description = "Training jobs compute environment"
 #   value       = module.batch.compute_environments

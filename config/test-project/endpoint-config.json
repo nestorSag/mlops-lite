@@ -14,11 +14,6 @@
         "instance_type": "ml.t2.medium",
         "volume_size_in_gb": 30,
         "inference_ami_version": null,
-        "serverless_config": {
-            "max_concurrency": 10,
-            "memory_size_in_mb": 4096,
-            "provisioned_concurrency": 5
-        },
         "managed_instance_scaling": {
             "status": "ENABLED",
             "min_instance_count": 1,

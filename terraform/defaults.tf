@@ -123,9 +123,12 @@ locals{
         {
             blue_green_update_policy = {
                 traffic_routing_configuration = {
-                    type = "linear",
+                    type = "LINEAR",
                     wait_interval_in_seconds = 60,
-                    linear_step_size = 25
+                    linear_step_size = {
+                        type = "CAPACITY_PERCENT",
+                        value = 25
+                    }
                 }
                 termination_wait_time_in_seconds = 0
             }

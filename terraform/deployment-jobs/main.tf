@@ -1,7 +1,7 @@
 module "s3_bucket" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=d8ad14f"
 
-  bucket = "${var.project}-${var.env_name}-sagemaker-endpoint-store"
+  bucket = local.bucket_name
   acl    = "private"
 
   force_destroy = var.s3_force_destroy
@@ -45,19 +45,15 @@ resource "null_resource" "bundle_build_and_push_model_image" {
   for_each = var.deployment_jobs
   provisioner "local-exec" {
     command = <<-EOT
-    MLFLOW_TRACKING_URI=${var.mlflow_tracking_uri} \
-    mlflow models build-docker \ 
-        --model models:/${each.key}/${each.value} \
-        --name ${module.ecr[each.key].repository_url}:v${each.value}
+    MLFLOW_TRACKING_URI=${var.mlflow_tracking_uri} mlflow models build-docker --model-uri models:/${each.key}/${each.value} --name ${module.ecr[each.key].repository_url}:${each.value}
 
     rm -rf ./tmp
     aws ecr get-login-password --region ${data.aws_region.current.name} | docker login --username AWS --password-stdin ${module.ecr[each.key].repository_url}
-    docker push ${module.ecr[each.key].repository_url}:v${each.value}
+    docker push ${module.ecr[each.key].repository_url}:${each.value}
     EOT
   }
 
   triggers = {
-    # Rebuild the image if any of the files in the mlproject directory change
     project_sha = each.value
   }
 }
@@ -95,6 +91,8 @@ resource "aws_sagemaker_model" "model" {
   name = "${each.key}-${each.value}-model"
   execution_role_arn = aws_iam_role.endpoint_role.arn
 
+  depends_on = [null_resource.bundle_build_and_push_model_image]
+
   primary_container {
     image = "${module.ecr[each.key].repository_url}:${each.value}"
   }
@@ -109,14 +107,22 @@ resource "aws_sagemaker_endpoint_configuration" "main" {
   for_each = var.deployment_jobs
   name  = "${each.key}-${each.value}-config"
 
+  depends_on = [aws_sagemaker_model.model]
+
   dynamic "data_capture_config" {
-    for_each = local.endpoint_configs[each.key]["data_capture_config"] != null ? [1] : []
+
+    for_each = lookup(
+      local.endpoint_configs[each.key],
+      "data_capture_config", 
+      null
+    ) != null ? [local.endpoint_configs[each.key]["data_capture_config"]] : []
+
     content {
-      enable_capture = try(local.endpoint_configs[each.key]["data_capture_config"]["enable_capture"], null)
-      destination_s3_uri = "${module.s3_bucket.bucket}/data_capture/${each.key}"
-      initial_sampling_percentage = try(local.endpoint_configs[each.key]["data_capture_config"]["initial_sampling_percentage"], null)
+      enable_capture = lookup(data_capture_config.value, "enable_capture", null)
+      destination_s3_uri = "s3://${module.s3_bucket.s3_bucket_id}/data_capture/${each.key}"
+      initial_sampling_percentage = lookup(data_capture_config.value, "initial_sampling_percentage", null)
       capture_options {
-        capture_mode = try(local.endpoint_configs[each.key]["data_capture_config"]["capture_options"]["capture_mode"], null)
+        capture_mode = try(data_capture_config.value["capture_options"]["capture_mode"], null)
       }
   
     }
@@ -126,34 +132,47 @@ resource "aws_sagemaker_endpoint_configuration" "main" {
     variant_name           = "AllTraffic"
     model_name             = aws_sagemaker_model.model[each.key].name
 
-    initial_instance_count = try(local.endpoint_configs[each.key]["production_variants"]["initial_instance_count"], null)
-    instance_type          = try(local.endpoint_configs[each.key]["production_variants"]["instance_type"], null)
-    volume_size_in_gb      = try(local.endpoint_configs[each.key]["production_variants"]["volume_size_in_gb"], null)
-    inference_ami_version  = try(local.endpoint_configs[each.key]["production_variants"]["inference_ami_version"], null)
+    initial_instance_count = lookup(local.endpoint_configs[each.key]["production_variants"], "initial_instance_count", null)
+    instance_type          = lookup(local.endpoint_configs[each.key]["production_variants"], "instance_type", null)
+    volume_size_in_gb      = lookup(local.endpoint_configs[each.key]["production_variants"], "volume_size_in_gb", null)
+    inference_ami_version  = lookup(local.endpoint_configs[each.key]["production_variants"], "inference_ami_version", null)
 
     dynamic "serverless_config" {
-      for_each = local.endpoint_configs[each.key]["serverless_config"] != null ? [1] : []
+      for_each = lookup(
+        local.endpoint_configs[each.key]["production_variants"],
+        "serverless_config", 
+        null
+      ) != null ? [local.endpoint_configs[each.key]["production_variants"]["serverless_config"]] : []
+
       content {
-        max_concurrency   = try(local.endpoint_configs[each.key]["serverless_config"]["max_concurrency"], null)
-        memory_size_in_mb = try(local.endpoint_configs[each.key]["serverless_config"]["memory_size_in_mb"], null)
-        provisioned_concurrency = try(local.endpoint_configs[each.key]["serverless_config"]["provisioned_concurrency"], null)
+        max_concurrency   = lookup(serverless_config.value, "max_concurrency", null)
+        memory_size_in_mb = lookup(serverless_config.value, "memory_size_in_mb", null)
+        provisioned_concurrency = lookup(serverless_config.value, "provisioned_concurrency", null)
       }
+
     }
 
     dynamic "managed_instance_scaling" {
-      for_each = local.endpoint_configs[each.key]["managed_instance_scaling"] != null ? [1] : []
+      
+      for_each = lookup(
+        local.endpoint_configs[each.key]["production_variants"],
+        "managed_instance_scaling", 
+        null
+      ) != null ? [local.endpoint_configs[each.key]["production_variants"]["managed_instance_scaling"]] : []
+      
       content {
-        min_instance_count = try(local.endpoint_configs[each.key]["managed_instance_scaling"]["min_instance_count"], null)
-        max_instance_count  = try(local.endpoint_configs[each.key]["managed_instance_scaling"]["max_instance_count"], null)
-        status = try(local.endpoint_configs[each.key]["managed_instance_scaling"]["status"], null)
+        min_instance_count = lookup(managed_instance_scaling.value, "min_instance_count", null)
+        max_instance_count  = lookup(managed_instance_scaling.value, "max_instance_count", null)
+        status = lookup(managed_instance_scaling.value, "status", null)
       }
+
     }
   }
 
   async_inference_config {
     output_config {
-      s3_output_path = "${module.s3_bucket.s3_bucket_arn}/async_inference/${each.key}/output"
-      s3_failure_path  = "${module.s3_bucket.s3_bucket_arn}/async_inference/${each.key}/error"
+      s3_output_path = "s3://${module.s3_bucket.s3_bucket_id}/async_inference/${each.key}/output"
+      s3_failure_path  = "s3://${module.s3_bucket.s3_bucket_id}/async_inference/${each.key}/error"
     }
   }
 }
@@ -161,90 +180,139 @@ resource "aws_sagemaker_endpoint_configuration" "main" {
 resource "aws_sagemaker_endpoint" "main" {
   for_each = var.deployment_jobs
   endpoint_config_name = aws_sagemaker_endpoint_configuration.main[each.key].name
+  depends_on = [aws_sagemaker_endpoint_configuration.main]
   name        = "${each.key}-endpoint"
   deployment_config {
 
     dynamic "blue_green_update_policy" {
-      for_each = local.deployment_endpoint_configs[each.key]["blue_green_update_policy"] != null ? [1] : []
+
+      for_each = lookup(
+        local.deployment_endpoint_configs[each.key], 
+        "blue_green_update_policy", 
+        null
+      ) != null ? [local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]] : []
+
       content {
-        termination_wait_in_seconds = try(
-          local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["termination_wait_time_in_seconds"], 
+        termination_wait_in_seconds = lookup(
+          blue_green_update_policy.value,
+          "termination_wait_time_in_seconds", 
           null
         )
-        maximum_execution_timeout_in_seconds = try(
-          local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["maximum_execution_timeout_in_seconds"], 
+        maximum_execution_timeout_in_seconds = lookup(
+          blue_green_update_policy.value,
+          "maximum_execution_timeout_in_seconds", 
           null
         )
         traffic_routing_configuration {
-          type = try(
-            local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["type"], 
+          type = lookup(
+            blue_green_update_policy.value["traffic_routing_configuration"],
+            "type", 
             null
           )
-          wait_interval_in_seconds = try(
-            local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["wait_interval_in_seconds"], 
+          wait_interval_in_seconds = lookup(
+            blue_green_update_policy.value["traffic_routing_configuration"],
+            "wait_interval_in_seconds", 
             null
           )
+
           dynamic "linear_step_size" {
-            for_each = local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["linear_step_size"] != null ? [1] : []
+            for_each = lookup(
+              blue_green_update_policy.value["traffic_routing_configuration"],
+              "linear_step_size", 
+              null
+            ) != null ? [blue_green_update_policy.value["traffic_routing_configuration"]["linear_step_size"]] : []
+
             content {
-              value = try(
-                local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["linear_step_size"]["value"], 
+              value = lookup(
+                linear_step_size.value,
+                "value", 
                 null
               )
-              type = try(
-                local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["linear_step_size"]["type"], 
+              type = lookup(
+                linear_step_size.value,
+                "type", 
                 null
               )
             }
           }
+
           dynamic "canary_size" {
-            for_each = local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["canary_size"] != null ? [1] : []
+            for_each = lookup(
+              blue_green_update_policy.value["traffic_routing_configuration"],
+              "canary_size", 
+              null
+            ) != null ? [blue_green_update_policy.value["traffic_routing_configuration"]["canary_size"]] : []
             content {
-              type = try(
-                local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["canary_size"]["type"], 
+              type = lookup(
+                canary_size.value,
+                "type", 
                 null
               )
-              value = try(
-                local.deployment_endpoint_configs[each.key]["blue_green_update_policy"]["traffic_routing_configuration"]["canary_size"]["value"], 
+              value = lookup(
+                canary_size.value,
+                "value", 
                 null
               )
             }
           }
+
         }
         
       }
     }
 
     dynamic "rolling_update_policy" {
-      for_each = local.deployment_endpoint_configs[each.key]["rolling_update_policy"] != null ? [1] : []
+
+      for_each = lookup(
+        local.deployment_endpoint_configs[each.key], 
+        "rolling_update_policy", 
+        null
+      ) != null ? [local.deployment_endpoint_configs[each.key]["rolling_update_policy"]] : []
+
       content {
         maximum_batch_size {
-          type = try(
-            local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["maximum_batch_size"]["type"], 
+          type = lookup(
+            rolling_update_policy.value["maximum_batch_size"],
+            "type", 
             null
           )
-          value = try(
-            local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["maximum_batch_size"]["value"], 
+          value = lookup(
+            rolling_update_policy.value["maximum_batch_size"],
+            "value", 
             null
           )
         }
-        maximum_execution_timeout_in_seconds = try(
-          local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["maximum_execution_timeout_in_seconds"], 
+        maximum_execution_timeout_in_seconds = lookup(
+          rolling_update_policy.value,
+          "maximum_execution_timeout_in_seconds", 
           null
         )
-        wait_interval_in_seconds = try(
-          local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["wait_interval_in_seconds"], 
+
+        wait_interval_in_seconds = lookup(
+          rolling_update_policy.value,
+          "wait_interval_in_seconds", 
           null
         )
-        rollback_maximum_batch_size {
-          type = try(
-            local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["rollback_maximum_batch_size"]["type"], 
+
+        dynamic "rollback_maximum_batch_size" {
+          for_each = lookup(
+            rolling_update_policy.value, 
+            "rollback_maximum_batch_size", 
             null
-          )
-          value = try(
-            local.deployment_endpoint_configs[each.key]["rolling_update_policy"]["rollback_maximum_batch_size"]["value"], 
-            null
-          )
+          ) != null ? [rolling_update_policy.value["rollback_maximum_batch_size"]] : []
+
+          content {
+            type = lookup(
+              rollback_maximum_batch_size.value,
+              "type", 
+              null
+            )
+            value = lookup(
+              rollback_maximum_batch_size.value,
+              "value", 
+              null
+            )
+          }
         } 
       }
     }

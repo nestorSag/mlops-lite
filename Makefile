@@ -120,7 +120,6 @@ update-ssm-set:
 		echo "Project folder $(project) not found. Please ensure that the project folder exists in ml-projects/."; \
         exit 1; \
     fi
-	cd ./terraform && terraform refresh -target=data.aws_ssm_parameter.*
 
 # Checks that the project folder exists, then updates the SSM JSON string and applies the Terraform configuration
 update-ssm-json:
