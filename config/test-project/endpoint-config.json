@@ -3,7 +3,7 @@
         "initial_sampling_percentage": 1,
         "enable_capture": true,
         "capture_options": {
-            "capture_mode": "InputAndOutput"
+            "capture_mode": ["Input", "Output"]
         },
         "destination_s3_uri": null
     },

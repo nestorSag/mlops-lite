@@ -118,13 +118,35 @@ resource "aws_sagemaker_endpoint_configuration" "main" {
     ) != null ? [local.endpoint_configs[each.key]["data_capture_config"]] : []
 
     content {
-      enable_capture = lookup(data_capture_config.value, "enable_capture", null)
-      destination_s3_uri = "s3://${module.s3_bucket.s3_bucket_id}/data_capture/${each.key}"
       initial_sampling_percentage = lookup(data_capture_config.value, "initial_sampling_percentage", null)
-      capture_options {
-        capture_mode = try(data_capture_config.value["capture_options"]["capture_mode"], null)
+      destination_s3_uri = "s3://${module.s3_bucket.s3_bucket_id}/data_capture/${each.key}"
+      enable_capture = lookup(data_capture_config.value, "enable_capture", null)
+      kms_key_id = lookup(data_capture_config.value, "kms_key_id", null)
+
+      dynamic "capture_options" {
+        for_each = lookup(
+          data_capture_config.value,
+          "capture_options", 
+          null
+        ) != null ? lookup(data_capture_config.value["capture_options"], "capture_mode", []) : []
+        iterator = mode
+        content {
+          capture_mode = mode.value
+        }
       }
-  
+
+      dynamic "capture_content_type_header" {
+        for_each = lookup(
+          data_capture_config.value,
+          "capture_content_type_header", 
+          null
+        ) != null ? [data_capture_config.value["capture_content_type_header"]] : []
+
+        content {
+          csv_content_types  = lookup(capture_content_type_header.value, "csv_content_types", null)
+          json_content_types = lookup(capture_content_type_header.value, "json_content_types", null)
+        }
+      }
     }
   }
 
@@ -169,10 +191,56 @@ resource "aws_sagemaker_endpoint_configuration" "main" {
     }
   }
 
-  async_inference_config {
-    output_config {
-      s3_output_path = "s3://${module.s3_bucket.s3_bucket_id}/async_inference/${each.key}/output"
-      s3_failure_path  = "s3://${module.s3_bucket.s3_bucket_id}/async_inference/${each.key}/error"
+  dynamic "async_inference_config" {
+    for_each = lookup(
+      local.endpoint_configs[each.key],
+      "async_inference_config", 
+      null
+    ) != null ? [local.endpoint_configs[each.key]["async_inference_config"]] : []
+
+    content{
+      
+      dynamic "output_config" {
+        for_each = lookup(
+          async_inference_config.value,
+          "output_config", 
+          null
+        ) != null ? [async_inference_config.value["output_config"]] : []
+
+        content {
+          kms_key_id = lookup(output_config.value, "kms_key_id", null)
+          s3_output_path = "s3://${module.s3_bucket.s3_bucket_id}/async_inference/${each.key}/output"
+          s3_failure_path  = "s3://${module.s3_bucket.s3_bucket_id}/async_inference/${each.key}/error"
+
+          dynamic "notification_config" {
+
+            for_each = lookup(
+              output_config.value,
+              "notification_config", 
+              null
+            ) != null ? [output_config.value["notification_config"]] : []
+
+            content {
+              include_inference_response_in = lookup(notification_config.value, "include_inference_response_in", null)
+              error_topic                   = lookup(notification_config.value, "error_topic", null)
+              success_topic                 = lookup(notification_config.value, "success_topic", null)
+            }
+          }
+        }
+      }
+
+      dynamic "client_config" {
+        for_each = lookup(
+          async_inference_config.value,
+          "client_config", 
+          null
+        ) != null ? [async_inference_config.value["client_config"]] : []
+
+        content {
+          max_concurrent_invocations_per_instance = lookup(client_config.value, "max_concurrent_invocations_per_instance", null)
+        }
+      }
+
     }
   }
 }

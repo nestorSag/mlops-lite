@@ -89,7 +89,7 @@ locals{
                 initial_sampling_percentage = 1,
                 enable_capture = true,
                 capture_options = {
-                    capture_mode = "InputAndOutput",
+                    capture_mode = ["Input", "Output"] # Originally Terraform expects a string but here it is a list to allow capturing both input and output, since "InputAndOutput" is not supported
                 }
                 destination_s3_uri = null # defined by Terraform module
             }
