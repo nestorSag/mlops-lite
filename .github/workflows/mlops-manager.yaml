@@ -17,7 +17,6 @@ env:
   TF_VAR_region: ${{ vars.TF_VAR_region }}
   TF_VAR_project: ${{ vars.TF_VAR_project }}
   TF_VAR_env_name: ${{ vars.TF_VAR_env_name }}
-  TF_VAR_mlflow_allowed_public_ips
   TF_EXTRA_FLAGS: -auto-approve
 
 jobs:
