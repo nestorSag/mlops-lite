@@ -223,8 +223,8 @@ module "batch" {
   create_instance_iam_role = false
 
   compute_environments = {
-    fargate_compute_env = {
-      name_prefix = "fargate_compute_env"
+    TrainingJobsEnv = {
+      name_prefix = "TrainingJobsEnv"
 
       service_role       = aws_iam_role.service_role.arn
       instance_role      = aws_iam_role.instance_role.arn
@@ -242,13 +242,13 @@ module "batch" {
 
   # Job queus and scheduling policies
   job_queues = {
-    training_jobs_queue = {
-      name     = "training_jobs_queue"
+    TrainingJobsQueue = {
+      name     = "TrainingJobsQueue"
       state    = "ENABLED"
       priority = 1
       create_scheduling_policy = false
 
-      compute_environments = ["fargate_compute_env"]
+      compute_environments = ["TrainingJobsEnv"]
 
       tags = {
         JobQueue = "Training jobs queue"

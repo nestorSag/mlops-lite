@@ -127,7 +127,7 @@ training-infra:
 training-job: training-infra
 	aws batch submit-job \
 	--job-name "$(project)-$$(date +%Y-%m-%d-%H-%M-%S)" \
-	--job-queue training_jobs_queue \
+	--job-queue TrainingJobsQueue \
 	--job-definition "training_job_$(project)"
 
 

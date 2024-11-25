@@ -15,20 +15,20 @@ output "deployment_jobs" {
 
 output "endpoint_arns" {
   description = "The ARN of SageMaker endpoints"
-  value = module.deployment_jobs[0].endpoint_arns
+  value = module.deployment_jobs.endpoint_arns
 }
 
 output "endpoint_bucket" {
   description = "The S3 bucket where the endpoint logs are stored"
-  value = module.deployment_jobs[0].endpoint_bucket
+  value = module.deployment_jobs.endpoint_bucket
 }
 
 output "compute_env_name" {
   description = "Training jobs compute environment's ARN"
-  value       = module.training_jobs[0].compute_environments["fargate_compute_env"]["compute_environment_name"]
+  value       = module.training_jobs.compute_environments["TrainingJobsEnv"]["compute_environment_name"]
 }
 
 output "jobs_queue_name" {
   description = "Training jobs queue's ARN"
-  value       = module.training_jobs[0].job_queues["training_jobs_queue"]["name"]
+  value       = module.training_jobs.job_queues["TrainingJobsQueue"]["name"]
 }

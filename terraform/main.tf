@@ -18,8 +18,7 @@ provider "aws" {
 }
 
 module "mlflow_server" {
-    # source = "git::https://github.com/nestorSag/terraform-aws-mlflow-server.git?ref=90ad1e8"
-    source = "../../terraform-aws-mlflow-server"
+    source = "git::https://github.com/nestorSag/terraform-aws-mlflow-server.git?ref=e6914d0"
 
     vpc_cidr_block         = var.vpc_cidr_block
     vpc_private_subnets    = var.vpc_private_subnets
@@ -53,8 +52,6 @@ module "training_jobs" {
 
   source = "./training-jobs"
 
-  count = length(local.training_jobs) > 0 ? 1 : 0
-
   depends_on = [module.mlflow_server]
   
   default_training_resource_requirements = local.default_training_resource_requirements
@@ -70,47 +67,9 @@ module "training_jobs" {
 
 }
 
-
-module "model_security_group" {
-  source = "git::github.com/terraform-aws-modules/terraform-aws-security-group?ref=eb9fb97"
-
-  name        = "default_model_security_group"
-  description = "Allows traffic from the VPC and VPN CIDR blocks"
-  vpc_id      = module.mlflow_server.vpc_id
-
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      description = "Access from VPC"
-      cidr_blocks = var.vpc_cidr_block
-    },
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      description = "Access from VPN"
-      cidr_blocks = var.vpn_cidr_block
-    }
-  ]
-
-  egress_with_cidr_blocks = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      description = "Allow all traffic out"
-      cidr_blocks = "0.0.0.0/0"
-    }
-  ]
-}
-
 module "deployment_jobs" {
 
   source = "./deployment-jobs"
-
-  count = length(local.deployment_jobs) > 0 ? 1 : 0
 
   depends_on = [module.mlflow_server]
 

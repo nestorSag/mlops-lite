@@ -196,3 +196,4 @@ export TF_VAR_env_name=<my-env>
 * The support for the MLFlow server's metadata DB is limited to MySQL 8.0
 
 * This project does not implement shadow deployment functionality at this time.
+
