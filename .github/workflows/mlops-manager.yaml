@@ -42,10 +42,10 @@ jobs:
       with:
         terraform_version: 1.9.7
     - name: connect to VPN endpoint
-        run: |
-          echo "$OVPN_FILE_CONTENT" > config.ovpn
-          sudo openvpn --config config.ovpn --daemon
-          sleep 10  # Wait for the VPN to establish a connection
+      run: |
+        echo "$OVPN_FILE_CONTENT" > config.ovpn
+        sudo openvpn --config config.ovpn --daemon
+        sleep 10  # Wait for the VPN to establish a connection
     - name: run MLOps operations
       run: make ${{ inputs.make_rule }}
 
