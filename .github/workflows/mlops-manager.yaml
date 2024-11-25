@@ -32,9 +32,9 @@ jobs:
     - name: Checkout the repository to the runner
       uses: actions/checkout@v2
     - name: Set up Python version
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
     - name: Install Python environment
       run: pip install -r requirements.txt
     - name: Setup Terraform with specified version on the runner
